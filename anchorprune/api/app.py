@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from anchorprune import __version__
 from anchorprune.api.errors import register_error_handlers
@@ -45,6 +46,18 @@ def create_app(
         title="AnchorPrune API",
         version=__version__,
         description=DESCRIPTION,
+    )
+
+    # Local-first CORS: the read-only dashboard runs on a different localhost
+    # origin (e.g. :3000) than the API (:8000), so the browser needs permissive
+    # CORS to read responses. This is transport configuration only — it changes
+    # no governance, pruning, or model behavior. No credentials are used.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+        allow_methods=["*"],
+        allow_headers=["*"],
+        allow_credentials=False,
     )
 
     repo = repository or SQLiteRunRepository(database_path)

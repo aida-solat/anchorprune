@@ -274,6 +274,36 @@ require FastAPI.
 See [`docs/service.md`](docs/service.md) for the architecture, persistence
 model, and the full endpoint list.
 
+## Dashboard
+
+AnchorPrune includes a local dashboard for inspecting governed state (v0.5).
+
+The dashboard is intentionally **read-only**. It visualizes runs, anchors,
+payload blocks, quarantined state, reasoning milestones, audit events, and
+metrics from the FastAPI service — a microscope for governed agent state, not a
+SaaS shell. It observes governance; it does not perform it.
+
+Start the API:
+
+```bash
+pip install -e ".[api]"
+anchorprune serve --db .anchorprune/anchorprune.db
+```
+
+Start the dashboard:
+
+```bash
+cd dashboard
+npm install
+npm run dev
+# open http://localhost:3000
+```
+
+Point it at a non-default API with
+`NEXT_PUBLIC_ANCHORPRUNE_API_URL=http://127.0.0.1:8000`. The dashboard has no
+authentication, multi-tenancy, or policy editing in v0.5. See
+[`docs/dashboard.md`](docs/dashboard.md).
+
 ## Installation
 
 ```bash
@@ -363,7 +393,8 @@ anchorprune/
 configs/       mock.yaml + service.mock.yaml + openai/anthropic example configs
 examples/      short + long_run_* + real_llm_smoke (adapter compatibility)
 benchmarks/    benchmark_report.md + results.json + long_run_results.csv
-docs/          architecture.md, method.md, service.md
+dashboard/     read-only Next.js state-graph dashboard (v0.5)
+docs/          architecture.md, method.md, service.md, dashboard.md
 tests/         full suite (deterministic + adapter contracts + API/persistence)
 ```
 
@@ -376,8 +407,9 @@ tests/         full suite (deterministic + adapter contracts + API/persistence)
   benchmark narrative and tables.
 - [`docs/service.md`](docs/service.md) — the v0.4 FastAPI service, persistence
   model, and endpoint list.
-- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1, v0.2, v0.3, and
-  v0.4.
+- [`docs/dashboard.md`](docs/dashboard.md) — the v0.5 read-only state-graph
+  dashboard.
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1 through v0.5.
 
 ## Tests
 
@@ -420,8 +452,10 @@ AnchorPrune is an honest research prototype. Its current boundaries:
 - **Local API service + persistence (shipped in v0.4).** A FastAPI service and
   SQLite persistence wrap the runtime so runs can be created, stepped,
   inspected, audited, and continued over HTTP. See [`docs/service.md`](docs/service.md).
-- **Dashboard / visualization (v0.5).** A read-only UI over the persisted runs,
-  state graphs, and audit trails — still no auth or multi-tenancy.
+- **Governed state graph dashboard (shipped in v0.5).** A read-only Next.js UI
+  over the persisted runs, state graphs, quarantine, milestones, audit trails,
+  and metrics — still no auth or multi-tenancy. See [`docs/dashboard.md`](docs/dashboard.md)
+  and [`dashboard/`](dashboard/).
 
 ## License
 

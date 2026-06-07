@@ -1,5 +1,55 @@
 # Release Notes
 
+## v0.5.0 — Governed State Graph Dashboard
+
+Adds a local, **read-only** Next.js dashboard for inspecting AnchorPrune
+governed agent state. It is a microscope for governed state, not a SaaS shell.
+No backend governance changed: the dashboard only reads the v0.4 FastAPI service.
+
+### Core principle
+
+> The dashboard observes governance. It does not perform governance.
+>
+> The UI only reads the API. It never prunes, approves anchors, detects
+> conflicts, or edits policy.
+
+### What shipped (`dashboard/`)
+
+- **Next.js 14 + TypeScript + Tailwind**, with **Recharts** for charts and
+  **@xyflow/react** for the state graph. Fully client-rendered, so `next build`
+  needs no running API.
+- **Read-only API client** (`lib/api.ts`) over `GET /health`, `/runs`,
+  `/runs/{id}`, `/runs/{id}/state`, `/audit`, `/metrics`, with typed models that
+  mirror the v0.4 responses exactly.
+- **Pages:** `/` (positioning + live API health), `/runs` (persisted runs
+  table), `/runs/[runId]` (the run microscope).
+- **Run detail** — summary cards plus tabs: **Graph**, **Anchors** (class &
+  critical filters), **Payloads** (state/flag filters), **Quarantine** (blocked
+  payloads + conflict edges — the governance story), **Milestones**, **Audit**
+  (expandable timeline), **Metrics**.
+- **State graph** — grouped layout (anchors → milestones → payload), color-coded
+  by class/state, drawing only the linkage the state graph declares.
+- **Charts** — context growth, input/output tokens per step, state-object counts
+  over steps, and a final-snapshot payload pruning breakdown.
+- **Docs:** `docs/dashboard.md` + a README Dashboard section.
+
+### Out of scope
+
+- auth / RBAC / multi-tenancy
+- billing / user management
+- cloud deployment
+- editing governance policies from the UI
+
+### Compatibility & guarantees
+
+- The Python package, FastAPI service, deterministic benchmark, and adapter
+  layer are unchanged. `anchorprune pack --out benchmarks --window 2` still
+  produces byte-identical artifacts; `pytest` and `ruff` stay green.
+- `npm run typecheck` and `npm run build` pass.
+- Only response-shape-compatible reads were used; **no API/DB/governance changes**.
+
+---
+
 ## v0.4.0 — FastAPI Service and SQLite Persistence
 
 Takes AnchorPrune from a CLI/library to a **local-first service**. Runs can now

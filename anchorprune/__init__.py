@@ -27,7 +27,7 @@ from anchorprune.evidence.models import EvidenceRef, EvidenceSourceType
 from anchorprune.llm.mock import MockLLM
 from anchorprune.milestones.models import ReasoningMilestone
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 __all__ = [
     "Anchor",

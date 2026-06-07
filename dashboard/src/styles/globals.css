@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: #0b0e14;
+  color: #e6edf6;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* React Flow renders on a light canvas by default; tone it for the dark shell. */
+.react-flow__attribution {
+  background: transparent !important;
+  color: #4b5568 !important;
+}
