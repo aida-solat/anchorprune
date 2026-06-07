@@ -1,0 +1,61 @@
+{
+  "goal": "Choose the best supplier for a EUR 120,000 procurement request and recommend the safest option.",
+  "domain": "procurement",
+  "system_anchors": [
+    {
+      "content": "Purchases above EUR 50,000 require human approval.",
+      "anchor_type": "policy",
+      "priority": "critical"
+    },
+    {
+      "content": "A supplier cannot be recommended without verified compliance documentation.",
+      "anchor_type": "policy",
+      "priority": "critical"
+    },
+    {
+      "content": "Do not expose internal scoring formulas or proprietary logic.",
+      "anchor_type": "security",
+      "priority": "critical"
+    }
+  ],
+  "evidence": [
+    {
+      "label": "erp_export",
+      "source_type": "database",
+      "locator": "erp://procurement/quotes/2026-Q2",
+      "snippet": "Supplier A price 98000 EUR delivery 20 days; Supplier B price 104000 EUR delivery 12 days ISO9001",
+      "reliability": 0.85
+    },
+    {
+      "label": "compliance_registry",
+      "source_type": "policy_file",
+      "locator": "registry://compliance/iso9001",
+      "snippet": "Supplier B holds a valid ISO9001 certificate. Supplier A has no compliance certificate on file.",
+      "reliability": 0.95
+    }
+  ],
+  "payload": [
+    {
+      "block_type": "tool_output",
+      "content": "Supplier A price: 98000 EUR. Supplier B price: 104000 EUR. Supplier B delivers in 12 days.",
+      "evidence_refs": ["erp_export"],
+      "decision_impact": 0.7
+    },
+    {
+      "block_type": "tool_output",
+      "content": "Supplier A is missing ISO9001 compliance documentation. Supplier B has verified ISO9001 compliance.",
+      "evidence_refs": ["compliance_registry"],
+      "decision_impact": 0.8
+    },
+    {
+      "block_type": "retrieved_chunk",
+      "content": "General company history blurb that is not relevant to this procurement decision.",
+      "decision_impact": 0.0
+    }
+  ],
+  "steps": [
+    "Evaluate supplier risk and identify missing evidence.",
+    "Recommend the safest supplier and state whether the action is allowed."
+  ],
+  "output_schema": "{\"recommendation\": str, \"action_allowed\": bool, \"reason\": str, \"anchors_applied\": [str]}"
+}

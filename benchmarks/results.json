@@ -1,0 +1,239 @@
+{
+  "version": "0.1",
+  "scenarios": {
+    "supplier": {
+      "baseline_a_full_history": {
+        "method": "Baseline A: full history",
+        "steps": 2,
+        "total_input_tokens": 322,
+        "total_output_tokens": 240,
+        "final_context_tokens": 163,
+        "token_count_by_step": [
+          159,
+          163
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 3,
+        "lost_anchor_rate": 0.0,
+        "constraint_adherence_rate": 1.0,
+        "critical_conflict_quarantine_rate": null,
+        "payload_eviction_rate": 0.0,
+        "milestone_retention_rate": 1.0,
+        "final_decision_context_valid": 1.0
+      },
+      "baseline_b_sliding_window": {
+        "method": "Baseline B: sliding window",
+        "steps": 2,
+        "total_input_tokens": 181,
+        "total_output_tokens": 240,
+        "final_context_tokens": 93,
+        "token_count_by_step": [
+          88,
+          93
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 0,
+        "lost_anchor_rate": 1.0,
+        "constraint_adherence_rate": 0.0,
+        "critical_conflict_quarantine_rate": null,
+        "payload_eviction_rate": 0.3333,
+        "milestone_retention_rate": 1.0,
+        "final_decision_context_valid": 1.0
+      },
+      "baseline_c_summary": {
+        "method": "Baseline C: simple summary",
+        "steps": 2,
+        "total_input_tokens": 182,
+        "total_output_tokens": 240,
+        "final_context_tokens": 93,
+        "token_count_by_step": [
+          89,
+          93
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 2,
+        "lost_anchor_rate": 0.3333,
+        "constraint_adherence_rate": 0.6667,
+        "critical_conflict_quarantine_rate": null,
+        "payload_eviction_rate": 1.0,
+        "milestone_retention_rate": 1.0,
+        "final_decision_context_valid": 1.0
+      },
+      "anchorprune": {
+        "method": "AnchorPrune",
+        "steps": 2,
+        "total_input_tokens": 684,
+        "total_output_tokens": 240,
+        "final_context_tokens": 457,
+        "token_count_by_step": [
+          227,
+          457
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 3,
+        "lost_anchor_rate": 0.0,
+        "constraint_adherence_rate": 1.0,
+        "critical_conflict_quarantine_rate": null,
+        "payload_eviction_rate": 0.3333,
+        "milestone_retention_rate": 1.0,
+        "final_decision_context_valid": 1.0
+      }
+    },
+    "coding_agent": {
+      "baseline_a_full_history": {
+        "method": "Baseline A: full history",
+        "steps": 2,
+        "total_input_tokens": 443,
+        "total_output_tokens": 240,
+        "final_context_tokens": 221,
+        "token_count_by_step": [
+          222,
+          221
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 3,
+        "lost_anchor_rate": 0.0,
+        "constraint_adherence_rate": 1.0,
+        "critical_conflict_quarantine_rate": 0.0,
+        "payload_eviction_rate": 0.0,
+        "milestone_retention_rate": 1.0,
+        "final_decision_context_valid": 0.0
+      },
+      "baseline_b_sliding_window": {
+        "method": "Baseline B: sliding window",
+        "steps": 2,
+        "total_input_tokens": 186,
+        "total_output_tokens": 240,
+        "final_context_tokens": 93,
+        "token_count_by_step": [
+          93,
+          93
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 0,
+        "lost_anchor_rate": 1.0,
+        "constraint_adherence_rate": 0.0,
+        "critical_conflict_quarantine_rate": 0.0,
+        "payload_eviction_rate": 0.7143,
+        "milestone_retention_rate": 0.0,
+        "final_decision_context_valid": 1.0
+      },
+      "baseline_c_summary": {
+        "method": "Baseline C: simple summary",
+        "steps": 2,
+        "total_input_tokens": 190,
+        "total_output_tokens": 240,
+        "final_context_tokens": 95,
+        "token_count_by_step": [
+          95,
+          95
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 2,
+        "lost_anchor_rate": 0.3333,
+        "constraint_adherence_rate": 0.5,
+        "critical_conflict_quarantine_rate": 0.0,
+        "payload_eviction_rate": 1.0,
+        "milestone_retention_rate": 0.5,
+        "final_decision_context_valid": 1.0
+      },
+      "anchorprune": {
+        "method": "AnchorPrune",
+        "steps": 2,
+        "total_input_tokens": 683,
+        "total_output_tokens": 240,
+        "final_context_tokens": 354,
+        "token_count_by_step": [
+          329,
+          354
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 3,
+        "lost_anchor_rate": 0.0,
+        "constraint_adherence_rate": 1.0,
+        "critical_conflict_quarantine_rate": 1.0,
+        "payload_eviction_rate": 0.1429,
+        "milestone_retention_rate": 1.0,
+        "final_decision_context_valid": 1.0
+      }
+    },
+    "contract_review": {
+      "baseline_a_full_history": {
+        "method": "Baseline A: full history",
+        "steps": 2,
+        "total_input_tokens": 391,
+        "total_output_tokens": 240,
+        "final_context_tokens": 195,
+        "token_count_by_step": [
+          196,
+          195
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 3,
+        "lost_anchor_rate": 0.0,
+        "constraint_adherence_rate": 1.0,
+        "critical_conflict_quarantine_rate": 0.0,
+        "payload_eviction_rate": 0.0,
+        "milestone_retention_rate": 1.0,
+        "final_decision_context_valid": 0.0
+      },
+      "baseline_b_sliding_window": {
+        "method": "Baseline B: sliding window",
+        "steps": 2,
+        "total_input_tokens": 159,
+        "total_output_tokens": 240,
+        "final_context_tokens": 79,
+        "token_count_by_step": [
+          80,
+          79
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 0,
+        "lost_anchor_rate": 1.0,
+        "constraint_adherence_rate": 0.0,
+        "critical_conflict_quarantine_rate": 0.0,
+        "payload_eviction_rate": 0.6667,
+        "milestone_retention_rate": 0.0,
+        "final_decision_context_valid": 0.0
+      },
+      "baseline_c_summary": {
+        "method": "Baseline C: simple summary",
+        "steps": 2,
+        "total_input_tokens": 199,
+        "total_output_tokens": 240,
+        "final_context_tokens": 99,
+        "token_count_by_step": [
+          100,
+          99
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 1,
+        "lost_anchor_rate": 0.6667,
+        "constraint_adherence_rate": 0.5,
+        "critical_conflict_quarantine_rate": 0.0,
+        "payload_eviction_rate": 1.0,
+        "milestone_retention_rate": 1.0,
+        "final_decision_context_valid": 0.0
+      },
+      "anchorprune": {
+        "method": "AnchorPrune",
+        "steps": 2,
+        "total_input_tokens": 745,
+        "total_output_tokens": 240,
+        "final_context_tokens": 499,
+        "token_count_by_step": [
+          246,
+          499
+        ],
+        "critical_anchors_total": 3,
+        "critical_anchors_retained": 3,
+        "lost_anchor_rate": 0.0,
+        "constraint_adherence_rate": 1.0,
+        "critical_conflict_quarantine_rate": 1.0,
+        "payload_eviction_rate": 0.3333,
+        "milestone_retention_rate": 1.0,
+        "final_decision_context_valid": 1.0
+      }
+    }
+  }
+}

@@ -1,0 +1,292 @@
+# AnchorPrune
+
+> **AnchorPrune does not summarize agent history. It governs agent state.**
+
+AnchorPrune is an **application-layer runtime method** for long-running AI
+agents. Instead of repeatedly replaying raw conversation history into the model,
+it transforms linear context into a **governed state graph** whose objects are
+preserved, quarantined, compressed, or evicted according to explicit governance
+rules — not according to how "important" a sentence happens to sound.
+
+It is **not** about model internals, KV-cache, or GPU memory. Its first-order
+objective is **constraint adherence and governed state retention**, not token
+minimization.
+
+---
+
+## Problem
+
+Long-running agents accumulate noisy, obsolete, and sometimes adversarial
+context. The common memory strategies each fail in a different way:
+
+- **Sliding-window memory** drops older messages — including critical
+  constraints — once the window fills.
+- **Simple summarization** shortens text and can silently erase policy,
+  evidence, and security boundaries.
+- **Full-history memory** retains everything but **does not govern** any of it:
+  an adversarial override payload enters the decision context with exactly the
+  same standing as a verified policy anchor.
+
+> Full-history memory remembers everything.
+> AnchorPrune governs what is allowed to matter.
+
+## What AnchorPrune does
+
+AnchorPrune turns linear context into a **governed state graph** composed of
+anchors, payload blocks, evidence references, reasoning milestones, conflict
+edges, and pruning actions. Each object carries a governance status that decides
+whether it can reach the model's decision context.
+
+## Core idea
+
+```
+Keep      what must not be forgotten.   (critical anchors → non-evictable)
+Quarantine what must not influence the agent. (conflicts / override attempts)
+Compress  what is useful but verbose.   (→ milestones)
+Evict     what no longer earns its place. (low-utility, obsolete, noise)
+```
+
+## Why not just summarization?
+
+Summarization shortens text. AnchorPrune assigns **governance status** to state.
+
+- A summary may preserve a sentence because it _sounds_ important. AnchorPrune
+  preserves a state object because it is **linked to a critical anchor, trusted
+  evidence, or unresolved risk**.
+- A summary may include an adversarial instruction verbatim. AnchorPrune can
+  **quarantine it before it reaches the final decision context**.
+
+| Traditional Summarization | AnchorPrune                          |
+| ------------------------- | ------------------------------------ |
+| Shortens text             | Governs state                        |
+| May lose important rules  | Makes critical anchors non-evictable |
+| Evidence-agnostic         | Links state objects to evidence      |
+| Policy-agnostic           | Applies policy-aware pruning         |
+| Cannot detect override    | Quarantines conflicting candidates   |
+
+See [`docs/method.md`](docs/method.md) for the full technical claim.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    IN["User goal / documents / tool outputs"] --> BP[Block Parser]
+    BP --> EX[Anchor Candidate Extractor]
+    EX --> EL[Evidence Linker]
+    EL --> CD[Conflict Detector]
+    CD --> GOV{{Anchor Governor}}
+
+    SYS["System anchors<br/>(immutable)"] --> GOV
+    GOV -->|hard gate: conflict| Q[(Quarantine)]
+    GOV -->|approve| REG["Hybrid Anchor Registry<br/>System / Domain / Runtime"]
+
+    REG --> US[Utility Scorer]
+    US --> PR[Anchor-Aware Pruner]
+    PR --> ME[Milestone Extractor]
+    PR --> SG[(Governed State Graph)]
+    ME --> SG
+    SG --> CC[Context Composer]
+    CC --> LLM[LLM / agent step]
+    LLM --> AUD[Audit Log + Metrics]
+    LLM -->|new outputs| BP
+```
+
+Full component walk-through: [`docs/architecture.md`](docs/architecture.md).
+
+### Hybrid Anchor Registry
+
+- **System anchors** — immutable, human-defined security/schema/hard-policy.
+- **Domain anchors** — reviewable rules extracted from trusted documents/tools.
+- **Runtime anchors** — temporary facts discovered during a run, expiring at end.
+
+### Anchor Governor (the heart)
+
+A model may _propose_ candidate anchors, but it cannot directly create critical
+anchors. Every candidate passes through the governor, which applies a
+**pre-scoring hard gate** (system-anchor conflict → quarantine) and then the
+**anchor weighting equation**:
+
+```
+anchor_weight = αA·authority + αR·risk + αE·evidence + αT·relevance
+                + αF·freshness − βC·conflict − βV·volatility
+```
+
+Coefficients are **per-domain** (see `anchorprune/domains/profiles.py`), not
+universal constants.
+
+## Benchmark results
+
+The Benchmark Pack v0.1 runs three governed-state scenarios — `supplier`,
+`coding_agent`, `contract_review` — each with critical anchors, expected
+constraints/milestones, and **adversarial payload blocks** that attempt to
+override governance. All four memory strategies are evaluated with a
+deterministic `MockLLM` so differences reflect the **memory strategy**, not
+model luck.
+
+Headline (final-step results; the quarantine row covers the two scenarios that
+contain adversarial payloads — `coding_agent` and `contract_review`):
+
+| Metric                            | Full history | Sliding window | Simple summary | **AnchorPrune** |
+| --------------------------------- | ------------ | -------------- | -------------- | --------------- |
+| Critical anchors retained         | partial      | **none**       | partial        | **all**         |
+| Constraint adherence              | high         | low            | partial        | **100%**        |
+| Adversarial payloads quarantined¹ | 0%           | 0%             | 0%             | **100%**        |
+| Milestone retention               | high         | low            | partial        | **100%**        |
+| Final decision context valid      | **no**       | varies         | varies         | **yes**         |
+
+¹ Quarantine is **N/A** for `supplier`, which has no adversarial payloads.
+Baselines have no governance mechanism, so they quarantine nothing (0%) wherever
+adversarial payloads exist.
+
+> _The table above is a qualitative rollup. Exact per-scenario numeric metrics
+> are in [`benchmarks/benchmark_report.md`](benchmarks/benchmark_report.md) and
+> [`benchmarks/results.json`](benchmarks/results.json)._
+
+> In this deterministic benchmark pack, AnchorPrune was the only evaluated memory
+> strategy with a governance mechanism: it preserved all critical anchors and
+> maintained 100% constraint adherence across all three scenarios, and
+> quarantined adversarial override attempts in every scenario where such attempts
+> were present.
+
+**Why does full-history "decision context valid" drop to 0% on adversarial
+scenarios?** Not from missing information. Full-history memory retains
+information but does not classify, quarantine, or govern it. The unsafe override
+payloads remain present in the final decision context with the same standing as
+verified anchors, so the deterministic evaluator marks the decision context as
+unsafe/invalid.
+
+**On tokens — read this honestly:** AnchorPrune is _not_ optimized to minimize
+tokens on tiny two-step examples; its governed-context formatting adds overhead
+there. Token advantages are expected in longer workflows where full-history
+memory grows unbounded and low-utility payloads accumulate over many steps. See
+[`benchmarks/benchmark_report.md`](benchmarks/benchmark_report.md) for the full
+narrative, per-metric tables, and per-step token counts.
+
+## Installation
+
+```bash
+git clone <repo-url>
+cd anchorPrune
+python -m pip install -e ".[dev]"
+```
+
+Requires Python 3.10+. Pure Python; the only runtime deps are `pydantic`,
+`typer`, and `rich`.
+
+## CLI usage
+
+```bash
+anchorprune init --domain procurement                  # show a domain profile
+anchorprune run --input examples/supplier/scenario.json
+anchorprune inspect --run-id <run_id>                  # anchors, milestones, audit
+anchorprune benchmark --input examples/supplier/scenario.json
+anchorprune pack --out benchmarks                      # full Benchmark Pack v0.1
+```
+
+## Reproducibility
+
+The benchmark is fully deterministic (no network, no randomness, fixed
+`MockLLM`). To reproduce the published report and machine-readable results:
+
+```bash
+python -m pip install -e ".[dev]"
+anchorprune pack --out benchmarks --window 2
+#   -> benchmarks/benchmark_report.md
+#   -> benchmarks/results.json
+pytest -q          # 36 tests, including the benchmark assertions
+ruff check .
+```
+
+`results.json` carries every metric for every method and scenario, so the
+headline claims can be checked field-by-field.
+
+## Library usage
+
+```python
+from anchorprune import AnchorPruneRuntime, MockLLM
+from anchorprune.blocks.models import PayloadBlockType
+from anchorprune.domains.profiles import get_domain_profile
+
+rt = AnchorPruneRuntime(MockLLM(), get_domain_profile("procurement"))
+rt.create_run(
+    goal="Recommend the safest supplier.",
+    system_anchors=[
+        {"content": "A supplier cannot be recommended without verified compliance documentation.",
+         "anchor_type": "policy", "priority": "critical"},
+    ],
+)
+rt.add_payload("Supplier A is missing ISO9001 compliance documentation.",
+               PayloadBlockType.TOOL_OUTPUT)
+result = rt.run_step("Recommend the safest supplier and state whether the action is allowed.")
+print(result.model_output)
+print(result.state_summary, result.pruning_summary)
+```
+
+## Project layout
+
+```
+anchorprune/
+  core/        runtime, state_graph, context_composer, audit
+  anchors/     models, registry, extractor, governor, weighting
+  blocks/      models, parser, store
+  evidence/    models, linker, scorer
+  conflicts/   models, detector
+  pruning/     utility, pruner, compression
+  milestones/  models, extractor
+  domains/     models, profiles
+  llm/         base, mock
+  benchmark/   harness, report, pack (baselines A/B/C vs AnchorPrune)
+  scenario.py  scenario loader/runner
+  cli.py       typer CLI (init/run/inspect/benchmark/pack)
+examples/      supplier, coding_agent, contract_review scenarios
+benchmarks/    generated benchmark_report.md + results.json
+docs/          architecture.md, method.md
+tests/         37 tests
+```
+
+## Documentation
+
+- [`docs/method.md`](docs/method.md) — the central technical claim and how it
+  differs from summarization.
+- [`docs/architecture.md`](docs/architecture.md) — component-by-component design.
+- [`benchmarks/benchmark_report.md`](benchmarks/benchmark_report.md) — full
+  benchmark narrative and tables.
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1.
+
+## Tests
+
+```bash
+pytest
+```
+
+## Limitations
+
+AnchorPrune v0.1 is an honest research prototype. Its current boundaries:
+
+- **Heuristic components.** Anchor extraction, conflict detection, evidence
+  linking, and compression are deterministic heuristics, not learned models.
+- **Deterministic evaluator.** The benchmark uses a fixed `MockLLM` to isolate
+  _memory-strategy_ behavior; it does not measure frontier-model reasoning
+  quality. `final_decision_context_valid` measures what each strategy makes
+  _available_ in the decision context, not the eloquence of an answer.
+- **Token overhead on tiny scenarios.** Governed-context formatting means
+  AnchorPrune can cost more tokens than naive baselines on two-step examples.
+  Token advantages are expected only in longer workflows.
+- **Synthetic scenarios.** The three scenarios are synthetic but deliberately
+  designed to isolate state-governance failures, not to model full real traffic.
+- **Production gaps.** Real deployments should add model-based extractors,
+  embeddings for relevance/redundancy, a stronger policy engine, and longer
+  multi-step benchmarks.
+
+## Roadmap
+
+- **Long-run benchmarks** where the token story becomes decisive:
+  `long_run_coding_20_steps`, `long_run_contract_15_steps`,
+  `long_run_procurement_10_steps`.
+- **Model-based extractors and embeddings** to replace heuristics.
+- **Pluggable real LLM clients** behind the existing `LLMClient` interface.
+- **Optional service + UI layers** (explicitly out of scope for v0.1).
+
+## License
+
+MIT
