@@ -1,5 +1,66 @@
 # Release Notes
 
+## v0.6.0 — Integration Layer for Governed Agent Workflows
+
+Makes AnchorPrune usable _inside_ existing agent workflows — LangGraph,
+LlamaIndex, custom tool loops, and coding-agent pipelines — without AnchorPrune
+becoming an agent framework itself. No SaaS, no auth, no dashboard changes.
+
+### Core principle
+
+> AnchorPrune is not the agent. It is the governor around the agent's memory.
+>
+> The integration layer adds primitives, not a framework. Every adapter
+> delegates to the runtime's Anchor Governor; none of them performs governance.
+
+### What shipped
+
+- **Generic middleware (universal).** `from anchorprune import AnchorPruneMiddleware`
+  with `before_model_call(run_id, new_payloads=…, instruction=…) -> GovernedContext`
+  and `after_model_call(run_id, model_output, …)`. Wrap a governed step around
+  _your own_ model call. Payloads may be strings, dicts, or `PayloadBlock`s.
+- **Runtime governed-step seam.** `AnchorPruneRuntime.run_step` is split into
+  `govern_and_compose` (phase 1, before the model) and `ingest_model_output`
+  (phase 2, after the model). `run_step` is now exactly those two phases around
+  the runtime's own LLM — behaviour is byte-for-byte unchanged.
+- **Tool-output ingestion helper.** `runtime.add_tool_output(tool_name, content,
+metadata=…)` attributes a tool result to its source and ingests it as ordinary
+  governed payload (no privilege).
+- **LangGraph adapter.** `anchorprune.integrations.langgraph.AnchorPruneNode` — a
+  plain callable node that composes governed context into graph state, plus an
+  `observe` node that ingests the model output.
+- **LlamaIndex adapter.** `anchorprune.integrations.llamaindex.AnchorPruneMemory`
+  — governed memory for document/RAG workflows: `put` retrieved chunks (with
+  evidence links), `get` a governed context; quarantined/evicted chunks are
+  excluded.
+- **Example.** `examples/integrations/coding_agent_loop/` — a runnable custom
+  loop (failing test, adversarial suggestion, obsolete patch) showing what
+  governance preserves, compresses, and quarantines.
+- **Docs.** `docs/integrations.md` + a README Integrations section.
+
+### Architecture notes
+
+- `resolve_config` moved to `anchorprune.config.resolve` (neutral location;
+  re-exported from `anchorprune.services` for compatibility) so the middleware
+  builds runtimes without importing the persistence/service stack.
+- Integration modules import only the AnchorPrune core. Importing them never
+  requires LangGraph, LlamaIndex, or FastAPI (verified in the import-safety test).
+
+### Out of scope
+
+- competing with LangGraph/CrewAI (AnchorPrune sits _on top of_ them)
+- auth / RBAC / multi-tenancy / billing / cloud deployment
+- new domain policy packs (planned for v0.7)
+
+### Compatibility & guarantees
+
+- The deterministic benchmark is unchanged: `anchorprune pack --out benchmarks
+--window 2` produces byte-identical artifacts.
+- `pytest` (97 tests) and `ruff` stay green. Nine new tests cover phase-split
+  parity, the tool-output helper, the middleware, and both adapters.
+
+---
+
 ## v0.5.0 — Governed State Graph Dashboard
 
 Adds a local, **read-only** Next.js dashboard for inspecting AnchorPrune

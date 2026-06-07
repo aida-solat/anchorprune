@@ -304,6 +304,41 @@ Point it at a non-default API with
 authentication, multi-tenancy, or policy editing in v0.5. See
 [`docs/dashboard.md`](docs/dashboard.md).
 
+## Integrations
+
+AnchorPrune can sit as a **governance layer** inside existing agent workflows —
+LangGraph, LlamaIndex, and custom tool loops — without becoming an agent
+framework itself (v0.6). The universal primitive is a generic middleware that
+wraps a governed step around _your own_ model call:
+
+```python
+from anchorprune import AnchorPruneMiddleware
+
+mw = AnchorPruneMiddleware(domain="procurement")
+run_id = mw.create_run(goal="Decide whether approval is allowed.")
+
+governed = mw.before_model_call(
+    run_id,
+    new_payloads=[{"tool_name": "erp", "content": "...", "metadata": {"risk": "high"}}],
+    instruction="Decide whether approval is allowed.",
+)
+output = my_llm(governed.prompt)          # your model, your call
+mw.after_model_call(run_id, output)
+```
+
+Adapters build on the same primitive: `AnchorPruneNode`
+(`anchorprune.integrations.langgraph`) drops into a LangGraph as a node, and
+`AnchorPruneMemory` (`anchorprune.integrations.llamaindex`) is a governed memory
+for document/RAG workflows. None of them owns governance logic — every anchor
+decision and quarantine is still made by the runtime's Anchor Governor, and
+importing them never requires the third-party framework to be installed.
+
+A runnable custom-loop example lives at
+[`examples/integrations/coding_agent_loop/`](examples/integrations/coding_agent_loop/).
+See [`docs/integrations.md`](docs/integrations.md).
+
+> AnchorPrune is not the agent. It is the governor around the agent's memory.
+
 ## Installation
 
 ```bash
@@ -387,14 +422,16 @@ anchorprune/
   storage/     base repo, sqlite, models, serialization, migrations (v0.4)
   services/    run_service, runtime_service (wrap the runtime; v0.4)
   api/         FastAPI app, routes/, schemas, dependencies, errors (v0.4)
+  middleware.py  AnchorPruneMiddleware: generic governed-step seam (v0.6)
+  integrations/  langgraph (AnchorPruneNode), llamaindex (AnchorPruneMemory) (v0.6)
   benchmark/   harness, report, pack (baselines A/B/C vs AnchorPrune)
   scenario.py  scenario loader/runner (single- and multi-step)
   cli.py       typer CLI (init/run [--config]/inspect/benchmark/pack/serve)
 configs/       mock.yaml + service.mock.yaml + openai/anthropic example configs
-examples/      short + long_run_* + real_llm_smoke (adapter compatibility)
+examples/      short + long_run_* + real_llm_smoke + integrations/coding_agent_loop
 benchmarks/    benchmark_report.md + results.json + long_run_results.csv
 dashboard/     read-only Next.js state-graph dashboard (v0.5)
-docs/          architecture.md, method.md, service.md, dashboard.md
+docs/          architecture.md, method.md, service.md, dashboard.md, integrations.md
 tests/         full suite (deterministic + adapter contracts + API/persistence)
 ```
 
@@ -409,7 +446,9 @@ tests/         full suite (deterministic + adapter contracts + API/persistence)
   model, and endpoint list.
 - [`docs/dashboard.md`](docs/dashboard.md) — the v0.5 read-only state-graph
   dashboard.
-- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1 through v0.5.
+- [`docs/integrations.md`](docs/integrations.md) — the v0.6 integration layer
+  (middleware, LangGraph, LlamaIndex).
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1 through v0.6.
 
 ## Tests
 
@@ -456,6 +495,13 @@ AnchorPrune is an honest research prototype. Its current boundaries:
   over the persisted runs, state graphs, quarantine, milestones, audit trails,
   and metrics — still no auth or multi-tenancy. See [`docs/dashboard.md`](docs/dashboard.md)
   and [`dashboard/`](dashboard/).
+- **Integration layer (shipped in v0.6).** A generic `AnchorPruneMiddleware`
+  plus LangGraph (`AnchorPruneNode`) and LlamaIndex (`AnchorPruneMemory`)
+  adapters so AnchorPrune wraps existing agent workflows without becoming a
+  framework. See [`docs/integrations.md`](docs/integrations.md).
+- **Domain policy packs (planned, v0.7).** Stronger per-domain profiles
+  (procurement, coding_agent, contract_review, finance/healthcare stubs) with
+  system/domain anchors, risk weights, freshness rules, and conflict patterns.
 
 ## License
 

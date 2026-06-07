@@ -12,6 +12,7 @@ The main agent execution loop. Each step:
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -36,7 +37,7 @@ from anchorprune.blocks.parser import BlockParser
 from anchorprune.conflicts.detector import ContradictionFn
 from anchorprune.conflicts.models import ConflictEdge, ConflictKind
 from anchorprune.core.audit import AuditEventType, AuditLog
-from anchorprune.core.context_composer import ContextComposer
+from anchorprune.core.context_composer import ComposedContext, ContextComposer
 from anchorprune.core.state_graph import GovernedStateGraph
 from anchorprune.domains.models import DomainProfile
 from anchorprune.domains.profiles import get_domain_profile
@@ -58,6 +59,23 @@ class StepResult(BaseModel):
     anchor_decisions: List[AnchorDecision] = Field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
+
+
+@dataclass
+class StepComposition:
+    """Governance + composition output for one step, produced *before* the
+    model is called.
+
+    This is the seam the v0.6 integration layer needs: a caller can obtain the
+    governed context, run its own model, and then hand the output back for
+    ingestion. The runtime still owns every governance decision; this object
+    merely carries the in-flight step state (the composed context plus the
+    anchor decisions and pruning actions already applied) across that boundary.
+    """
+
+    composed: ComposedContext
+    decisions: List[AnchorDecision] = field(default_factory=list)
+    actions: List[PruningAction] = field(default_factory=list)
 
 
 class AnchorPruneRuntime:
@@ -169,6 +187,35 @@ class AnchorPruneRuntime:
         )
         return block
 
+    def add_tool_output(
+        self,
+        tool_name: str,
+        content: str,
+        *,
+        metadata: Optional[Dict[str, Any]] = None,
+        decision_impact: float = 0.0,
+        evidence_refs: Optional[List[str]] = None,
+        block_type: PayloadBlockType = PayloadBlockType.TOOL_OUTPUT,
+    ) -> PayloadBlock:
+        """Ingest a tool result as a governed payload block.
+
+        Convenience for tool-calling agents. The ``tool_name`` is recorded in
+        the block metadata so downstream governance, audit, and the dashboard
+        can attribute the payload to its source. The tool output is treated as
+        ordinary payload: it must still pass through the Anchor Governor and the
+        pruner like any other state — this helper adds no privilege.
+        """
+
+        meta = dict(metadata or {})
+        meta.setdefault("tool_name", tool_name)
+        return self.add_payload(
+            content,
+            block_type,
+            evidence_refs=evidence_refs,
+            decision_impact=decision_impact,
+            metadata=meta,
+        )
+
     # ---- governance -------------------------------------------------------
 
     def ingest_candidate(self, candidate: CandidateAnchor) -> AnchorDecision:
@@ -246,6 +293,39 @@ class AnchorPruneRuntime:
     def run_step(
         self, instruction: str, output_schema: Optional[str] = None
     ) -> StepResult:
+        """Run one full governed step against the runtime's own LLM.
+
+        This is the single-call path used by the CLI, scenarios, and benchmark.
+        It is now a thin composition of the two governance phases —
+        :meth:`govern_and_compose` then :meth:`ingest_model_output` — with the
+        runtime's LLM called in between. The behaviour is identical to v0.5;
+        the phases are factored out so the v0.6 integration layer can drive the
+        same governance around an *external* model call.
+        """
+
+        step = self.govern_and_compose(instruction, output_schema)
+        result = self.llm.complete(step.composed.prompt)
+        return self.ingest_model_output(
+            result.text,
+            proposed_anchor_texts=result.proposed_anchor_texts,
+            composition=step,
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+        )
+
+    def govern_and_compose(
+        self, instruction: str, output_schema: Optional[str] = None
+    ) -> StepComposition:
+        """Phase 1 of a step: govern current state and compose the context.
+
+        Extracts and governs candidate anchors from active payload, runs
+        anchor-aware pruning, and composes the governed context — everything
+        that happens *before* the model is called. Returns a
+        :class:`StepComposition` carrying the composed context plus the
+        decisions and pruning actions already applied, to be handed to
+        :meth:`ingest_model_output` after the model responds.
+        """
+
         # 1. Extract & govern candidates from current active payload.
         active_blocks = [
             b
@@ -272,15 +352,32 @@ class AnchorPruneRuntime:
             included_blocks=len(composed.included_block_ids),
             dropped_blocks=len(composed.dropped_block_ids),
         )
+        return StepComposition(composed=composed, decisions=decisions, actions=actions)
 
-        # 4. Call the LLM.
-        result = self.llm.complete(composed.prompt)
-        self.metrics["total_input_tokens"] += result.input_tokens
-        self.metrics["total_output_tokens"] += result.output_tokens
+    def ingest_model_output(
+        self,
+        model_output: str,
+        *,
+        composition: StepComposition,
+        proposed_anchor_texts: Optional[List[str]] = None,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+    ) -> StepResult:
+        """Phase 2 of a step: ingest the model output and finalize.
+
+        Records token usage, ingests the model output as a governed payload
+        block, governs any proposed anchors, finalizes step metrics/audit, and
+        advances the step index. The model output is ordinary payload: it still
+        passes through the Anchor Governor — this method grants no privilege.
+        """
+
+        # 4. Account for tokens spent on this step.
+        self.metrics["total_input_tokens"] += input_tokens
+        self.metrics["total_output_tokens"] += output_tokens
 
         # 5. Ingest model output as payload and govern proposed anchors.
-        output_block = self.add_payload(result.text, PayloadBlockType.MODEL_OUTPUT)
-        for text in result.proposed_anchor_texts:
+        output_block = self.add_payload(model_output, PayloadBlockType.MODEL_OUTPUT)
+        for text in proposed_anchor_texts or []:
             self.ingest_candidate(
                 CandidateAnchor(
                     content=text,
@@ -293,7 +390,7 @@ class AnchorPruneRuntime:
             )
 
         # 6. Finalize step.
-        pruning_summary = self._pruning_summary(actions)
+        pruning_summary = self._pruning_summary(composition.actions)
         self.metrics["steps"] += 1
         self.audit.record(
             AuditEventType.STEP_COMPLETED,
@@ -304,13 +401,13 @@ class AnchorPruneRuntime:
         step_result = StepResult(
             run_id=self.graph.run_id,
             step_index=self.graph.step_index,
-            model_output=result.text,
-            composed_prompt=composed.prompt,
+            model_output=model_output,
+            composed_prompt=composition.composed.prompt,
             state_summary=self.graph.summary(),
             pruning_summary=pruning_summary,
-            anchor_decisions=decisions,
-            input_tokens=result.input_tokens,
-            output_tokens=result.output_tokens,
+            anchor_decisions=composition.decisions,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
         self.graph.step_index += 1
         return step_result

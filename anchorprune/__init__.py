@@ -25,9 +25,10 @@ from anchorprune.core.state_graph import GovernedStateGraph
 from anchorprune.domains.models import AnchorWeightConfig, DomainProfile
 from anchorprune.evidence.models import EvidenceRef, EvidenceSourceType
 from anchorprune.llm.mock import MockLLM
+from anchorprune.middleware import AnchorPruneMiddleware, GovernedContext
 from anchorprune.milestones.models import ReasoningMilestone
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 __all__ = [
     "Anchor",
@@ -50,5 +51,7 @@ __all__ = [
     "AnchorPruneRuntime",
     "StepResult",
     "MockLLM",
+    "AnchorPruneMiddleware",
+    "GovernedContext",
     "__version__",
 ]

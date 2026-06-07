@@ -24,15 +24,28 @@ for mod in list(sys.modules):
     if mod.split(".")[0] in _Blocker.BLOCKED:
         del sys.modules[mod]
 
-# Core + storage + services must import with FastAPI absent.
+# Core + storage + services + integrations must import with FastAPI absent.
 for module in (
     "anchorprune",
     "anchorprune.core.runtime",
     "anchorprune.config",
     "anchorprune.storage",
     "anchorprune.services",
+    "anchorprune.middleware",
+    "anchorprune.integrations",
+    "anchorprune.integrations.langgraph",
+    "anchorprune.integrations.llamaindex",
 ):
     importlib.import_module(module)
+
+# The integration layer must work end-to-end with FastAPI absent.
+from anchorprune import AnchorPruneMiddleware
+
+mw = AnchorPruneMiddleware(domain="default")
+rid = mw.create_run(goal="g")
+governed = mw.before_model_call(rid, new_payloads=["obs"], instruction="proceed")
+assert governed.prompt
+mw.after_model_call(rid, "done")
 
 # A run can be created, stepped, and persisted with no FastAPI involved.
 from anchorprune.storage import SQLiteRunRepository

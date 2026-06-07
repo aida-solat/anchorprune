@@ -8,39 +8,18 @@ never redefined here — the service merely wires and restores state.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from anchorprune.anchors.registry import HybridAnchorRegistry
-from anchorprune.config import build_runtime, load_config
-from anchorprune.config.models import AppConfig
+from anchorprune.config import build_runtime
+from anchorprune.config.resolve import resolve_config
 from anchorprune.core.runtime import AnchorPruneRuntime
 from anchorprune.storage.serialization import graph_from_dict
 
-# Directory of shipped example configs (resolved relative to the repo root).
-_CONFIGS_DIR = Path("configs")
-
-
-def resolve_config(config_name: Optional[str], *, domain: Optional[str] = None) -> AppConfig:
-    """Resolve a config by name, file path, or fall back to the deterministic
-    mock pipeline. The resolved config's domain is overridden when provided."""
-
-    config: Optional[AppConfig] = None
-    if config_name:
-        candidate = Path(config_name)
-        search = [candidate] if candidate.suffix else []
-        search += [_CONFIGS_DIR / f"{config_name}.yaml", _CONFIGS_DIR / f"{config_name}.yml"]
-        for path in search:
-            if path.exists():
-                config = load_config(path)
-                break
-    if config is None:
-        # Deterministic mock pipeline by default (no network, no randomness).
-        config = AppConfig()
-    if domain:
-        config = config.model_copy(deep=True)
-        config.domain = domain
-    return config
+# Re-exported for backward compatibility; the canonical implementation now lives
+# in :mod:`anchorprune.config.resolve` so the integration layer can reuse it
+# without importing the persistence/service stack.
+__all__ = ["RuntimeService", "resolve_config"]
 
 
 class RuntimeService:
