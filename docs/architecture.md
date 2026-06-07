@@ -202,3 +202,13 @@ via `anchorprune run --config <file>`.
 Optional provider SDKs are never required by a core install: importing an
 adapter module is always safe, and only constructing a real client needs its
 extra (`anchorprune[openai]`, `anchorprune[anthropic]`).
+
+## Service layer (v0.4)
+
+`anchorprune/api/` (FastAPI), `anchorprune/services/` (orchestration), and
+`anchorprune/storage/` (SQLite) wrap the runtime as a local-first service:
+routes call services, services call the runtime, the runtime owns the method.
+The governed state is persisted as a lossless JSON snapshot per step and
+rehydrated to continue runs across process restarts. FastAPI is an optional
+`[api]` extra; the core never imports it. See [`service.md`](service.md) for the
+full design, schema, and endpoint list.

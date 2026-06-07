@@ -1,5 +1,64 @@
 # Release Notes
 
+## v0.4.0 — FastAPI Service and SQLite Persistence
+
+Takes AnchorPrune from a CLI/library to a **local-first service**. Runs can now
+be created, stepped, inspected, audited, and persisted over HTTP, while the
+governed-state runtime, deterministic benchmark, and adapter layer are all
+unchanged. No UI, auth, multi-tenancy, Postgres, background workers, or cloud
+deployment.
+
+### Core principle
+
+> The service layer wraps the runtime. It does not redefine the method.
+>
+> Routes call services. Services call the runtime. The runtime owns the method.
+
+### What shipped
+
+- **FastAPI service with OpenAPI docs** (`anchorprune/api/`): `GET /health`,
+  `POST /runs`, `GET /runs`, `GET /runs/{id}`, `POST /runs/{id}/payload`,
+  `POST /runs/{id}/steps`, `GET /runs/{id}/state`, `GET /runs/{id}/audit`,
+  `GET /runs/{id}/metrics`, `DELETE /runs/{id}`.
+- **SQLite persistence** (`anchorprune/storage/`): `runs`, `state_snapshots`,
+  `audit_events`, `step_metrics`. The governed state is stored as a lossless
+  **JSON snapshot per step** rather than over-normalized tables; audit events are
+  written with `INSERT OR IGNORE` (dedup by id).
+- **Storage abstraction**: a `RunRepository` interface, a `sqlite3`-stdlib
+  implementation, and `GovernedStateGraph` serialization helpers with a
+  round-trip test (`graph -> JSON -> SQLite -> JSON -> graph`).
+- **Service layer** (`anchorprune/services/`): `RunService` orchestrates
+  persistence; `RuntimeService` builds new runtimes and rehydrates existing ones
+  (graph + cumulative metrics + anchor registry) so a run can be continued after
+  a process restart. No governance/pruning/model logic lives in routes or
+  storage.
+- **`anchorprune serve`** — `--host`, `--port`, `--db`; FastAPI/uvicorn are
+  imported lazily so the command degrades gracefully without the extra.
+- **Optional `[api]` dependency group** (`fastapi`, `uvicorn`). A core install
+  never requires FastAPI.
+- **`configs/service.mock.yaml`** — deterministic default for the service.
+- **Docs**: `docs/service.md`, a README API-service section.
+
+### Compatibility & guarantees
+
+- `anchorprune pack --out benchmarks --window 2` still produces **byte-identical**
+  artifacts; the benchmark depends on neither the API nor SQLite.
+- `pip install anchorprune` does not require FastAPI; importing the core works
+  with the `[api]` extras absent (verified by a subprocess test that blocks
+  `fastapi`/`uvicorn`/`starlette`).
+- Governance is preserved end-to-end: an override payload submitted over HTTP is
+  quarantined by the Anchor Governor exactly as under the CLI.
+- SQLite persists runs across process restarts (verified by restarting the app
+  against the same database file and continuing the run).
+
+### Quality
+
+- Full suite passing (deterministic core + adapter contracts + new API,
+  persistence, state-round-trip, core-import-without-FastAPI, and
+  benchmark-determinism tests). Lint clean (`ruff check .`).
+
+---
+
 ## v0.3.0 — Pluggable Adapter Layer
 
 Turns AnchorPrune from a fully deterministic prototype into a runtime that can

@@ -249,6 +249,31 @@ anchorprune run --input examples/real_llm_smoke/scenario.json \
 See [`examples/real_llm_smoke/`](examples/real_llm_smoke/) and the adapter-layer
 section of [`docs/architecture.md`](docs/architecture.md).
 
+## API service
+
+AnchorPrune can also run as a local FastAPI service (v0.4). The service layer
+wraps the same governed-state runtime used by the CLI and benchmarks. It
+persists runs, state snapshots, audit events, and metrics to SQLite, so runs can
+be created, stepped, inspected, audited, and continued across process restarts.
+
+Install and run:
+
+```bash
+pip install -e ".[api]"
+anchorprune serve --db .anchorprune/anchorprune.db
+# open http://127.0.0.1:8000/docs
+```
+
+The service is a shell around the runtime — **routes call services, services
+call the runtime, the runtime owns the method**. Governance is preserved
+end-to-end: an override payload sent over HTTP is quarantined exactly as under
+the CLI. The API is intentionally local-first in v0.4: no authentication,
+multi-tenancy, or dashboard. A core install (`pip install anchorprune`) does not
+require FastAPI.
+
+See [`docs/service.md`](docs/service.md) for the architecture, persistence
+model, and the full endpoint list.
+
 ## Installation
 
 ```bash
@@ -258,8 +283,9 @@ python -m pip install -e ".[dev]"
 ```
 
 Requires Python 3.10+. Pure Python; core runtime deps are `pydantic`, `typer`,
-`rich`, and `pyyaml`. Real-provider adapters are optional extras:
-`pip install 'anchorprune[openai]'` or `'anchorprune[anthropic]'`.
+`rich`, and `pyyaml`. Optional extras: the local API service
+(`pip install 'anchorprune[api]'`, adds FastAPI + uvicorn) and real-provider
+adapters (`'anchorprune[openai]'` or `'anchorprune[anthropic]'`).
 
 ## CLI usage
 
@@ -270,6 +296,7 @@ anchorprune inspect --run-id <run_id>                  # anchors, milestones, au
 anchorprune benchmark --input examples/supplier/scenario.json
 anchorprune pack --out benchmarks                      # full Benchmark Pack v0.1
 anchorprune run --input <scenario> --config configs/mock.yaml  # pipeline via config
+anchorprune serve --db .anchorprune/anchorprune.db    # local FastAPI service (needs [api])
 ```
 
 ## Reproducibility
@@ -327,14 +354,17 @@ anchorprune/
   milestones/  models, extractor
   domains/     models, profiles
   llm/         base, mock, local/openai/anthropic adapters
+  storage/     base repo, sqlite, models, serialization, migrations (v0.4)
+  services/    run_service, runtime_service (wrap the runtime; v0.4)
+  api/         FastAPI app, routes/, schemas, dependencies, errors (v0.4)
   benchmark/   harness, report, pack (baselines A/B/C vs AnchorPrune)
   scenario.py  scenario loader/runner (single- and multi-step)
-  cli.py       typer CLI (init/run [--config]/inspect/benchmark/pack)
-configs/       mock.yaml + openai/anthropic example configs
+  cli.py       typer CLI (init/run [--config]/inspect/benchmark/pack/serve)
+configs/       mock.yaml + service.mock.yaml + openai/anthropic example configs
 examples/      short + long_run_* + real_llm_smoke (adapter compatibility)
 benchmarks/    benchmark_report.md + results.json + long_run_results.csv
-docs/          architecture.md, method.md
-tests/         full suite (deterministic + adapter contracts)
+docs/          architecture.md, method.md, service.md
+tests/         full suite (deterministic + adapter contracts + API/persistence)
 ```
 
 ## Documentation
@@ -344,7 +374,10 @@ tests/         full suite (deterministic + adapter contracts)
 - [`docs/architecture.md`](docs/architecture.md) — component-by-component design.
 - [`benchmarks/benchmark_report.md`](benchmarks/benchmark_report.md) — full
   benchmark narrative and tables.
-- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1, v0.2, and v0.3.
+- [`docs/service.md`](docs/service.md) — the v0.4 FastAPI service, persistence
+  model, and endpoint list.
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1, v0.2, v0.3, and
+  v0.4.
 
 ## Tests
 
@@ -384,8 +417,11 @@ AnchorPrune is an honest research prototype. Its current boundaries:
   embeddings, and model-based extraction/conflict/compression adapters behind a
   config system, with deterministic mode preserved as the source of truth.
 - **Real-traffic and even-longer (50+ step) benchmarks.**
-- **Optional service + UI layers** (FastAPI/persistence in v0.4+, explicitly out
-  of scope until the adapter layer is solid).
+- **Local API service + persistence (shipped in v0.4).** A FastAPI service and
+  SQLite persistence wrap the runtime so runs can be created, stepped,
+  inspected, audited, and continued over HTTP. See [`docs/service.md`](docs/service.md).
+- **Dashboard / visualization (v0.5).** A read-only UI over the persisted runs,
+  state graphs, and audit trails — still no auth or multi-tenancy.
 
 ## License
 

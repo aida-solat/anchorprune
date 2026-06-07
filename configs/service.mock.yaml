@@ -1,0 +1,28 @@
+# Default config for the v0.4 FastAPI service.
+#
+# The service uses the same deterministic, network-free runtime as the CLI and
+# benchmark. deterministic_benchmark_mode: true forces heuristic components
+# everywhere, so the API cannot introduce a real model, randomness, or network
+# calls. Per-run domain is set by the API request (POST /runs).
+domain: default
+
+llm:
+  provider: mock
+  model: mock-deterministic
+
+extractor:
+  mode: heuristic
+
+conflict_detector:
+  mode: heuristic
+
+compressor:
+  mode: heuristic
+
+embeddings:
+  provider: hash
+  dim: 64
+
+runtime:
+  token_budget: 32000
+  deterministic_benchmark_mode: true

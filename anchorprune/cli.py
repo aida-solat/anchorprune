@@ -215,5 +215,35 @@ def pack(
         console.print(f"[green]Wrote[/green] {path}")
 
 
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", help="Bind host."),
+    port: int = typer.Option(8000, help="Bind port."),
+    db: Path = typer.Option(
+        Path(".anchorprune/anchorprune.db"),
+        help="SQLite database path for run persistence.",
+    ),
+) -> None:
+    """Start the local FastAPI service (requires `pip install anchorprune[api]`)."""
+
+    try:
+        import uvicorn
+
+        from anchorprune.api.app import create_app
+    except ModuleNotFoundError as exc:  # pragma: no cover - exercised manually
+        console.print(
+            "[red]The API service requires the optional 'api' extra.[/red]\n"
+            "Install it with: [bold]pip install -e \".[api]\"[/bold]"
+        )
+        raise typer.Exit(code=1) from exc
+
+    application = create_app(database_path=str(db))
+    console.print(
+        f"[green]AnchorPrune API[/green] on http://{host}:{port}  "
+        f"[dim](docs at /docs, db={db})[/dim]"
+    )
+    uvicorn.run(application, host=host, port=port)
+
+
 if __name__ == "__main__":
     app()
