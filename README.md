@@ -157,10 +157,44 @@ unsafe/invalid.
 
 **On tokens — read this honestly:** AnchorPrune is _not_ optimized to minimize
 tokens on tiny two-step examples; its governed-context formatting adds overhead
-there. Token advantages are expected in longer workflows where full-history
-memory grows unbounded and low-utility payloads accumulate over many steps. See
-[`benchmarks/benchmark_report.md`](benchmarks/benchmark_report.md) for the full
-narrative, per-metric tables, and per-step token counts.
+there. Token advantages show up in longer workflows — which is exactly what the
+v0.2 Long-Run Benchmark Pack measures.
+
+### Long-Run Benchmark Pack v0.2
+
+Three long-run scenarios — `long_run_coding_20_steps`,
+`long_run_contract_15_steps`, `long_run_procurement_10_steps` — inject useful,
+obsolete, noisy, and adversarial payloads over 10–20 steps and track
+**context-growth slope**, **anchor retention over time**, **adversarial
+contamination over time**, and **obsolete-payload retention**.
+
+Across all three long-run scenarios, AnchorPrune holds `lost_anchor_rate = 0%`,
+`adversarial_contamination = 0%`, `constraint_adherence = 100%`, and a valid
+final decision context, while its **context-growth slope stays below
+full-history**. The thesis the pack demonstrates:
+
+- **Full-history memory** — strong retention, but unbounded growth and rising
+  adversarial contamination.
+- **Sliding-window memory** — bounded size, but loses anchors.
+- **Simple-summary memory** — bounded size, but unstable governance.
+- **AnchorPrune** — governed retention with growth slower than full history.
+
+> AnchorPrune is not the smallest memory strategy. It is the smallest **governed**
+> memory strategy in the benchmark: it preserves critical anchors, prevents
+> adversarial contamination, and keeps context growth below full-history memory
+> over long-running workflows.
+
+Sliding-window and summary look cheaper only because they have already discarded
+the constraints the agent must obey — cheap but blind. **Token counts are only
+meaningful when the resulting decision context is valid**, so the benchmark
+report shows `tokens_per_valid_context` as N/A wherever a method's final context
+is invalid.
+
+Full narrative, per-metric tables, per-step context-growth tables, and the
+`tokens_per_valid_context` cost metric are in
+[`benchmarks/benchmark_report.md`](benchmarks/benchmark_report.md); raw numbers
+in [`benchmarks/results.json`](benchmarks/results.json) and
+[`benchmarks/long_run_results.csv`](benchmarks/long_run_results.csv).
 
 ## Installation
 
@@ -236,12 +270,13 @@ anchorprune/
   domains/     models, profiles
   llm/         base, mock
   benchmark/   harness, report, pack (baselines A/B/C vs AnchorPrune)
-  scenario.py  scenario loader/runner
+  scenario.py  scenario loader/runner (single- and multi-step)
   cli.py       typer CLI (init/run/inspect/benchmark/pack)
-examples/      supplier, coding_agent, contract_review scenarios
-benchmarks/    generated benchmark_report.md + results.json
+examples/      short (supplier, coding_agent, contract_review)
+               + long_run_{coding_20,contract_15,procurement_10}_steps
+benchmarks/    benchmark_report.md + results.json + long_run_results.csv
 docs/          architecture.md, method.md
-tests/         37 tests
+tests/         40 tests
 ```
 
 ## Documentation
@@ -280,12 +315,15 @@ AnchorPrune v0.1 is an honest research prototype. Its current boundaries:
 
 ## Roadmap
 
-- **Long-run benchmarks** where the token story becomes decisive:
-  `long_run_coding_20_steps`, `long_run_contract_15_steps`,
-  `long_run_procurement_10_steps`.
+- **Long-run benchmarks (shipped in v0.2).** `long_run_coding_20_steps`,
+  `long_run_contract_15_steps`, `long_run_procurement_10_steps` measure
+  context-growth slope, anchor retention over time, adversarial contamination
+  over time, and bounded governed context. See the _Long-Run Benchmark Pack
+  v0.2_ section above.
 - **Model-based extractors and embeddings** to replace heuristics.
 - **Pluggable real LLM clients** behind the existing `LLMClient` interface.
-- **Optional service + UI layers** (explicitly out of scope for v0.1).
+- **Real-traffic and even-longer (50+ step) benchmarks.**
+- **Optional service + UI layers** (explicitly out of scope for now).
 
 ## License
 

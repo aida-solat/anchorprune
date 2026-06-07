@@ -1,5 +1,51 @@
 # Release Notes
 
+## v0.2 — Long-Run Benchmark Pack
+
+Extends the benchmark to long-running agent memory behavior over 10–20 steps,
+with payloads injected over time. No new product surface (no API, DB, or UI).
+
+### Highlights
+
+- **Three long-run scenarios.** `long_run_coding_20_steps`,
+  `long_run_contract_15_steps`, `long_run_procurement_10_steps` — each injects
+  useful, obsolete, noisy, and adversarial payloads across many steps.
+- **Multi-step scenario format.** Steps may be objects with per-step `payloads`,
+  so information arrives over time. The v0.1 string-step format still works
+  (backward compatible).
+- **New per-step and aggregate metrics on `BenchmarkResult`:**
+  `context_tokens_by_step`, `anchor_retention_by_step`,
+  `adversarial_contamination_by_step`, `obsolete_retention_by_step`,
+  `state_size_by_step`, `context_growth_slope`, `max_context_size`,
+  `final_context_size_ratio_vs_full_history`, `tokens_per_valid_context`, and an
+  experimental `bounded_context_score`. All v0.1 metrics are preserved.
+- **Report split into two parts.** Part 1 = v0.1 short adversarial scenarios;
+  Part 2 = v0.2 long-run pack with governance tables, per-step context-growth
+  tables, interpretation, and explicit deterministic/synthetic caveats.
+- **New artifact** `benchmarks/long_run_results.csv` (per-step series).
+
+### Result (deterministic)
+
+Across all three long-run scenarios, AnchorPrune holds `lost_anchor_rate = 0%`,
+`adversarial_contamination = 0%`, `constraint_adherence = 100%`, a valid final
+decision context, and a context-growth slope below full history.
+
+> AnchorPrune is not the smallest memory strategy. It is the smallest governed
+> memory strategy in the benchmark: it preserves critical anchors, prevents
+> adversarial contamination, and keeps context growth below full-history memory
+> over long-running workflows.
+
+Token counts are only meaningful when the resulting decision context is valid, so
+`tokens_per_valid_context` is reported as N/A wherever a method's final context
+is invalid — a small but anchor-less or adversarial-contaminated context is a
+cheaper _invalid_ context, not a better strategy.
+
+### Quality
+
+- 40 passing tests (`pytest`), lint clean (`ruff check .`).
+
+---
+
 ## v0.1 — Public Release Pack
 
 First public release of AnchorPrune: a governed-state runtime for long-running
