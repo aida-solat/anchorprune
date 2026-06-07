@@ -1,0 +1,30 @@
+# Example real-provider pipeline using OpenAI. Requires `pip install
+# 'anchorprune[openai]'` and OPENAI_API_KEY in the environment.
+#
+# NOTE: deterministic_benchmark_mode MUST be false to actually use a real model.
+# This configuration is for adapter compatibility / smoke runs only; it is not
+# part of the deterministic benchmark and its outputs are not benchmark claims.
+domain: coding_agent
+
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0.0
+  api_key_env: OPENAI_API_KEY
+
+extractor:
+  mode: hybrid
+
+conflict_detector:
+  mode: hybrid
+
+compressor:
+  mode: model_based
+
+embeddings:
+  provider: openai
+  model: text-embedding-3-small
+
+runtime:
+  token_budget: 32000
+  deterministic_benchmark_mode: false

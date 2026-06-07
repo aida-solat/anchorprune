@@ -16,7 +16,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from anchorprune.anchors.extractor import AnchorCandidateExtractor
+from anchorprune.anchors.extractors.base import AnchorExtractor
+from anchorprune.anchors.extractors.heuristic import HeuristicAnchorExtractor
 from anchorprune.anchors.governor import AnchorGovernor
 from anchorprune.anchors.models import (
     Anchor,
@@ -43,6 +44,7 @@ from anchorprune.evidence.linker import EvidenceLinker
 from anchorprune.evidence.models import EvidenceRef
 from anchorprune.llm.base import LLMClient
 from anchorprune.milestones.extractor import MilestoneExtractor
+from anchorprune.pruning.compressors.base import Compressor
 from anchorprune.pruning.pruner import AnchorAwarePruner, PruningAction, PruningOp
 
 
@@ -65,16 +67,23 @@ class AnchorPruneRuntime:
         domain_profile: Optional[DomainProfile] = None,
         *,
         contradiction_fn: Optional[ContradictionFn] = None,
+        anchor_extractor: Optional[AnchorExtractor] = None,
+        compressor: Optional[Compressor] = None,
     ) -> None:
         self.llm = llm
         self.domain_profile = domain_profile or get_domain_profile("default")
 
         self.parser = BlockParser()
         self.linker = EvidenceLinker()
-        self.extractor = AnchorCandidateExtractor(linker=self.linker)
+        # Pluggable components default to the deterministic heuristic pipeline,
+        # so the runtime and benchmark behave exactly as in v0.1/v0.2 unless a
+        # model-based adapter is explicitly injected (e.g. via config.factory).
+        self.extractor = anchor_extractor or HeuristicAnchorExtractor(linker=self.linker)
         self.governor = AnchorGovernor(contradiction_fn=contradiction_fn)
         self.milestone_extractor = MilestoneExtractor()
-        self.pruner = AnchorAwarePruner(milestone_extractor=self.milestone_extractor)
+        self.pruner = AnchorAwarePruner(
+            milestone_extractor=self.milestone_extractor, compressor=compressor
+        )
         self.composer = ContextComposer()
 
         self.graph = GovernedStateGraph(domain=self.domain_profile.name)
@@ -243,7 +252,9 @@ class AnchorPruneRuntime:
             for b in self.graph.payload_blocks.values()
             if b.pruning_state == PruningState.ACTIVE
         ]
-        candidates = self.extractor.extract(active_blocks, self.graph.evidence_refs)
+        candidates = self.extractor.extract_candidates(
+            active_blocks, self.graph, self.domain_profile
+        )
         decisions = [self.ingest_candidate(c) for c in candidates]
 
         # 2. Anchor-aware pruning.

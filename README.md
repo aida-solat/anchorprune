@@ -196,6 +196,59 @@ Full narrative, per-metric tables, per-step context-growth tables, and the
 in [`benchmarks/results.json`](benchmarks/results.json) and
 [`benchmarks/long_run_results.csv`](benchmarks/long_run_results.csv).
 
+## Deterministic core, pluggable adapters
+
+AnchorPrune's benchmark claims are based on deterministic heuristic components
+and `MockLLM` runs.
+
+v0.3 adds optional adapter interfaces for real LLMs, embeddings, model-assisted
+extraction, semantic conflict detection, and compression. The governance
+contract is unchanged: model-based components may **propose** or **enrich**
+state, but the **Anchor Governor decides** what survives and what reaches the
+decision context.
+
+> **Deterministic governance remains the source of truth. Model-based adapters
+> may propose, enrich, or compress state, but they do not bypass the Anchor
+> Governor.**
+>
+> LLM proposes. Anchor Governor disposes.
+
+Each stage is selectable between a deterministic heuristic and a model-based
+adapter via config:
+
+| Stage              | Heuristic (default)                     | Model-based (optional)                      |
+| ------------------ | --------------------------------------- | ------------------------------------------- |
+| LLM                | `MockLLM`                               | `OpenAILLM`, `AnthropicLLM`, local/callable |
+| Embeddings         | `HashEmbeddingClient`                   | `OpenAIEmbeddingClient`                     |
+| Anchor extraction  | `HeuristicAnchorExtractor`              | `ModelBasedAnchorExtractor`, `Hybrid`       |
+| Conflict detection | `HeuristicConflictDetector` (hard gate) | `ModelAssisted`, `Hybrid`                   |
+| Compression        | `HeuristicCompressor`                   | `ModelBasedCompressor`                      |
+
+Two guarantees keep the benchmark honest:
+
+- **`deterministic_benchmark_mode: true`** (the default in `configs/mock.yaml`)
+  forces every stage back to its heuristic implementation and the provider back
+  to `mock`, so a config can never contaminate benchmark numbers with a real
+  model, randomness, or the network.
+- **Optional SDKs are truly optional.** `pip install anchorprune` never pulls in
+  `openai`/`anthropic`; importing an adapter module is always safe, and only
+  _constructing_ a real client requires its extra (`anchorprune[openai]`,
+  `anchorprune[anthropic]`).
+
+```bash
+# Deterministic (default, offline):
+anchorprune run --input examples/coding_agent/scenario.json
+
+# Real provider (adapter compatibility smoke; NOT a benchmark claim):
+pip install 'anchorprune[openai]'
+export OPENAI_API_KEY=sk-...
+anchorprune run --input examples/real_llm_smoke/scenario.json \
+  --config examples/real_llm_smoke/config.openai.example.yaml
+```
+
+See [`examples/real_llm_smoke/`](examples/real_llm_smoke/) and the adapter-layer
+section of [`docs/architecture.md`](docs/architecture.md).
+
 ## Installation
 
 ```bash
@@ -204,8 +257,9 @@ cd anchorPrune
 python -m pip install -e ".[dev]"
 ```
 
-Requires Python 3.10+. Pure Python; the only runtime deps are `pydantic`,
-`typer`, and `rich`.
+Requires Python 3.10+. Pure Python; core runtime deps are `pydantic`, `typer`,
+`rich`, and `pyyaml`. Real-provider adapters are optional extras:
+`pip install 'anchorprune[openai]'` or `'anchorprune[anthropic]'`.
 
 ## CLI usage
 
@@ -215,6 +269,7 @@ anchorprune run --input examples/supplier/scenario.json
 anchorprune inspect --run-id <run_id>                  # anchors, milestones, audit
 anchorprune benchmark --input examples/supplier/scenario.json
 anchorprune pack --out benchmarks                      # full Benchmark Pack v0.1
+anchorprune run --input <scenario> --config configs/mock.yaml  # pipeline via config
 ```
 
 ## Reproducibility
@@ -227,7 +282,7 @@ python -m pip install -e ".[dev]"
 anchorprune pack --out benchmarks --window 2
 #   -> benchmarks/benchmark_report.md
 #   -> benchmarks/results.json
-pytest -q          # 36 tests, including the benchmark assertions
+pytest -q          # full suite, including the benchmark assertions
 ruff check .
 ```
 
@@ -264,19 +319,22 @@ anchorprune/
   anchors/     models, registry, extractor, governor, weighting
   blocks/      models, parser, store
   evidence/    models, linker, scorer
-  conflicts/   models, detector
-  pruning/     utility, pruner, compression
+  conflicts/   models, detector, detectors/ (heuristic/model/hybrid)
+  pruning/     utility, pruner, compression, compressors/ (heuristic/model)
+  anchors/     ... extractors/ (heuristic/model/hybrid)
+  embeddings/  base, hash_adapter, openai_adapter (optional)
+  config/      models, loader, factory (heuristic vs model pipeline)
   milestones/  models, extractor
   domains/     models, profiles
-  llm/         base, mock
+  llm/         base, mock, local/openai/anthropic adapters
   benchmark/   harness, report, pack (baselines A/B/C vs AnchorPrune)
   scenario.py  scenario loader/runner (single- and multi-step)
-  cli.py       typer CLI (init/run/inspect/benchmark/pack)
-examples/      short (supplier, coding_agent, contract_review)
-               + long_run_{coding_20,contract_15,procurement_10}_steps
+  cli.py       typer CLI (init/run [--config]/inspect/benchmark/pack)
+configs/       mock.yaml + openai/anthropic example configs
+examples/      short + long_run_* + real_llm_smoke (adapter compatibility)
 benchmarks/    benchmark_report.md + results.json + long_run_results.csv
 docs/          architecture.md, method.md
-tests/         40 tests
+tests/         full suite (deterministic + adapter contracts)
 ```
 
 ## Documentation
@@ -286,7 +344,7 @@ tests/         40 tests
 - [`docs/architecture.md`](docs/architecture.md) — component-by-component design.
 - [`benchmarks/benchmark_report.md`](benchmarks/benchmark_report.md) — full
   benchmark narrative and tables.
-- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1.
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1, v0.2, and v0.3.
 
 ## Tests
 
@@ -296,10 +354,12 @@ pytest
 
 ## Limitations
 
-AnchorPrune v0.1 is an honest research prototype. Its current boundaries:
+AnchorPrune is an honest research prototype. Its current boundaries:
 
-- **Heuristic components.** Anchor extraction, conflict detection, evidence
-  linking, and compression are deterministic heuristics, not learned models.
+- **Heuristic components are the default and the benchmark's basis.** Anchor
+  extraction, conflict detection, evidence linking, and compression are
+  deterministic heuristics. v0.3 adds optional model-based adapters for these,
+  but the published benchmark runs entirely on the heuristic/`MockLLM` path.
 - **Deterministic evaluator.** The benchmark uses a fixed `MockLLM` to isolate
   _memory-strategy_ behavior; it does not measure frontier-model reasoning
   quality. `final_decision_context_valid` measures what each strategy makes
@@ -320,10 +380,12 @@ AnchorPrune v0.1 is an honest research prototype. Its current boundaries:
   context-growth slope, anchor retention over time, adversarial contamination
   over time, and bounded governed context. See the _Long-Run Benchmark Pack
   v0.2_ section above.
-- **Model-based extractors and embeddings** to replace heuristics.
-- **Pluggable real LLM clients** behind the existing `LLMClient` interface.
+- **Pluggable adapter layer (shipped in v0.3).** Optional real-LLM clients,
+  embeddings, and model-based extraction/conflict/compression adapters behind a
+  config system, with deterministic mode preserved as the source of truth.
 - **Real-traffic and even-longer (50+ step) benchmarks.**
-- **Optional service + UI layers** (explicitly out of scope for now).
+- **Optional service + UI layers** (FastAPI/persistence in v0.4+, explicitly out
+  of scope until the adapter layer is solid).
 
 ## License
 

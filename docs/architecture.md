@@ -152,3 +152,53 @@ _tunable per domain_ rather than relying on universal constants.
 `anchorprune/llm/base.py` defines `LLMClient`; `llm/mock.py` provides the
 deterministic `MockLLM` used by tests and the benchmark. Real model clients can
 be added behind the same interface without touching the governance pipeline.
+
+## Adapter layer (v0.3)
+
+v0.3 makes each stage of the pipeline selectable between a deterministic
+heuristic (the default, and the benchmark's basis) and a model-based adapter.
+The constitutional rule is enforced in code, not just documented:
+
+> **Deterministic governance remains the source of truth. Model-based adapters
+> may propose, enrich, or compress state, but they do not bypass the Anchor
+> Governor.** LLM proposes. Anchor Governor disposes.
+
+### Adapter packages
+
+- **LLM** — `anchorprune/llm/`: formal `LLMRequest` / `LLMResponse` /
+  `LLMClient.generate`. `complete()` is kept as a backward-compatible wrapper so
+  the runtime/benchmark are byte-identical. Adapters: `MockLLM` (default),
+  `EchoLLM` / `CallableLLM` (local, dependency-free), optional `OpenAILLM` /
+  `AnthropicLLM` behind import guards.
+- **Embeddings** — `anchorprune/embeddings/`: `EmbeddingClient`, deterministic
+  `HashEmbeddingClient`, optional `OpenAIEmbeddingClient`.
+- **Anchor extractors** — `anchorprune/anchors/extractors/`: `AnchorExtractor`
+  with `Heuristic` / `ModelBased` / `Hybrid`. The model-based extractor emits
+  `CandidateAnchor`s only and forces a `model_*` source — it can never
+  self-promote to a trusted source or create an approved anchor. Every candidate
+  still passes through the Anchor Governor.
+- **Conflict detectors** — `anchorprune/conflicts/detectors/`: `ConflictDetector`
+  with `Heuristic` / `ModelAssisted` / `Hybrid`. **Hard gates are heuristic and
+  authoritative.** Model edges are always non-critical; the hybrid detector
+  preserves every heuristic critical edge and never lets a model add or clear a
+  system-anchor hard gate. The governor's pre-scoring hard gate
+  (`conflicts/detector.py`) remains the enforcement point.
+- **Compressors** — `anchorprune/pruning/compressors/`: `Compressor` with
+  `Heuristic` (default, reproduces the v0.1/v0.2 summary) and `ModelBased`.
+  `enforce_linkage()` rebuilds the compressed block from the source, so
+  `linked_anchor_ids`, `evidence_refs`, and `source_block_id` are preserved
+  structurally regardless of the backend.
+
+### Config and the deterministic safety switch
+
+`anchorprune/config/` provides `AppConfig` (`models.py`), a YAML/JSON
+`loader.py`, and a `factory.py` that builds a `Pipeline` and a wired
+`AnchorPruneRuntime`. When `runtime.deterministic_benchmark_mode` is true (the
+default in `configs/mock.yaml`), the factory forces every stage to its heuristic
+implementation and the provider to `mock` — a config can never contaminate the
+benchmark with a real model, randomness, or the network. The CLI exposes this
+via `anchorprune run --config <file>`.
+
+Optional provider SDKs are never required by a core install: importing an
+adapter module is always safe, and only constructing a real client needs its
+extra (`anchorprune[openai]`, `anchorprune[anthropic]`).

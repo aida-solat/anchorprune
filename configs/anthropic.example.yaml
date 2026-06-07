@@ -1,0 +1,30 @@
+# Example real-provider pipeline using Anthropic. Requires `pip install
+# 'anchorprune[anthropic]'` and ANTHROPIC_API_KEY in the environment.
+#
+# NOTE: deterministic_benchmark_mode MUST be false to actually use a real model.
+# This configuration is for adapter compatibility / smoke runs only; it is not
+# part of the deterministic benchmark and its outputs are not benchmark claims.
+domain: coding_agent
+
+llm:
+  provider: anthropic
+  model: claude-3-5-sonnet-latest
+  temperature: 0.0
+  api_key_env: ANTHROPIC_API_KEY
+
+extractor:
+  mode: hybrid
+
+conflict_detector:
+  mode: hybrid
+
+compressor:
+  mode: model_based
+
+embeddings:
+  provider: hash
+  dim: 64
+
+runtime:
+  token_budget: 32000
+  deterministic_benchmark_mode: false

@@ -79,6 +79,12 @@ def init(domain: str = typer.Option("default", help="Domain profile name.")) -> 
 def run(
     input: Path = typer.Option(..., exists=True, help="Scenario JSON file."),
     goal: Optional[str] = typer.Option(None, help="Override the scenario goal."),
+    config: Optional[Path] = typer.Option(
+        None,
+        exists=True,
+        help="Pipeline config (YAML/JSON) selecting heuristic vs model-based "
+        "adapters. Omit for the deterministic mock pipeline.",
+    ),
 ) -> None:
     """Run a scenario through the AnchorPrune governed runtime."""
 
@@ -86,7 +92,28 @@ def run(
     if goal:
         scenario["goal"] = goal
 
-    runtime, results = run_scenario(scenario)
+    llm = None
+    extractor = None
+    compressor = None
+    if config is not None:
+        from anchorprune.config import build_pipeline, load_config
+
+        pipeline = build_pipeline(load_config(config))
+        llm, extractor, compressor = (
+            pipeline.llm,
+            pipeline.extractor,
+            pipeline.compressor,
+        )
+        console.print(
+            f"[dim]Pipeline: llm={pipeline.config.llm.provider.value}, "
+            f"extractor={pipeline.config.extractor.mode.value}, "
+            f"compressor={pipeline.config.compressor.mode.value}, "
+            f"deterministic={pipeline.config.runtime.deterministic_benchmark_mode}[/dim]"
+        )
+
+    runtime, results = run_scenario(
+        scenario, llm, anchor_extractor=extractor, compressor=compressor
+    )
     path = _save_run(runtime, results)
 
     last = results[-1]

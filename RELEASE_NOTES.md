@@ -1,5 +1,66 @@
 # Release Notes
 
+## v0.3.0 — Pluggable Adapter Layer
+
+Turns AnchorPrune from a fully deterministic prototype into a runtime that can
+connect to real models — **without** compromising the deterministic benchmark.
+v0.3 introduces optional real-provider adapters while preserving deterministic
+benchmark mode as the source of truth. No API, DB, UI, auth, or deployment.
+
+### Core principle (unchanged)
+
+> Deterministic governance remains the source of truth. Model-based adapters may
+> propose, enrich, or compress state, but they do not bypass the Anchor Governor.
+>
+> LLM proposes. Anchor Governor disposes.
+
+### What shipped
+
+- **LLM adapter interface.** Formal `LLMRequest` / `LLMResponse` / `LLMClient.generate`,
+  with the legacy `complete()` preserved as a wrapper so the runtime and
+  benchmark are byte-for-byte unchanged. Adapters: `MockLLM` (default),
+  `EchoLLM` / `CallableLLM` (local, dependency-free), and optional `OpenAILLM` /
+  `AnthropicLLM` behind import guards.
+- **Embedding adapter interface.** `EmbeddingClient` with a deterministic
+  `HashEmbeddingClient` for tests/offline and an optional `OpenAIEmbeddingClient`.
+- **Anchor extractors.** `AnchorExtractor` with `Heuristic` (default),
+  `ModelBased` (emits `CandidateAnchor`s only — never approved anchors), and
+  `Hybrid`. Model output always flows through the Anchor Governor.
+- **Conflict detectors.** `ConflictDetector` with `Heuristic`, `ModelAssisted`,
+  and `Hybrid`. Heuristic system-anchor conflicts are authoritative hard gates;
+  a model can add non-critical signals but can never assert or clear a hard gate.
+- **Compressors.** `Compressor` with `Heuristic` (default) and `ModelBased`.
+  Linkage (`linked_anchor_ids`, `evidence_refs`, `source_block_id`) is preserved
+  structurally, not left to the model.
+- **Config system.** `AppConfig` + YAML/JSON loader + pipeline `factory`.
+  `configs/mock.yaml` plus `openai.example.yaml` / `anthropic.example.yaml`.
+  CLI gains `anchorprune run --config <file>`.
+- **`deterministic_benchmark_mode` safety switch.** When true (the default for
+  mock/benchmark configs), the factory forces every stage to heuristic and the
+  provider to `mock`, so a config can never contaminate benchmark numbers with a
+  real model, randomness, or the network.
+- **`examples/real_llm_smoke/`.** Adapter-compatibility smoke example, explicitly
+  **not** part of the deterministic benchmark claims.
+- **Optional dependencies.** `pip install anchorprune` never pulls in
+  `openai`/`anthropic`; importing an adapter module is always safe, and only
+  constructing a real client requires its extra.
+
+### Compatibility & guarantees
+
+- All v0.1/v0.2 deterministic benchmarks are unchanged:
+  `anchorprune pack --out benchmarks --window 2` regenerates byte-identical
+  artifacts using `MockLLM` + heuristic components.
+- Existing benchmark results depend on no network, API keys, randomness, or real
+  models.
+
+### Quality
+
+- Full test suite passing (deterministic core + new adapter-contract,
+  optional-import-safety, governance-passthrough, hard-gate, compressor-linkage,
+  and config tests). Lint clean (`ruff check .`).
+
+---
+
 ## v0.2 — Long-Run Benchmark Pack
 
 Extends the benchmark to long-running agent memory behavior over 10–20 steps,

@@ -1,0 +1,34 @@
+# Real-provider smoke config for examples/real_llm_smoke.
+# Copy to config.openai.yaml, then:
+#   pip install 'anchorprune[openai]'
+#   export OPENAI_API_KEY=sk-...
+#   anchorprune run --input examples/real_llm_smoke/scenario.json \
+#                   --config examples/real_llm_smoke/config.openai.yaml
+#
+# deterministic_benchmark_mode is false so a real model is actually used. This
+# example is NOT part of the deterministic benchmark and its outputs are not
+# benchmark claims.
+domain: coding_agent
+
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0.0
+  api_key_env: OPENAI_API_KEY
+
+extractor:
+  mode: hybrid
+
+conflict_detector:
+  mode: hybrid
+
+compressor:
+  mode: model_based
+
+embeddings:
+  provider: hash
+  dim: 64
+
+runtime:
+  token_budget: 32000
+  deterministic_benchmark_mode: false

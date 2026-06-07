@@ -22,7 +22,8 @@ from anchorprune.blocks.models import PayloadBlock, PruningState
 from anchorprune.core.state_graph import GovernedStateGraph
 from anchorprune.domains.models import DomainProfile
 from anchorprune.milestones.extractor import MilestoneExtractor
-from anchorprune.pruning.compression import compress_block
+from anchorprune.pruning.compressors.base import Compressor
+from anchorprune.pruning.compressors.heuristic import HeuristicCompressor
 from anchorprune.pruning.utility import score_payload_block
 
 HIGH_WEIGHT_DOMAIN = 0.7
@@ -51,8 +52,15 @@ def _linked_anchor_classes(block: PayloadBlock, graph: GovernedStateGraph):
 
 
 class AnchorAwarePruner:
-    def __init__(self, milestone_extractor: Optional[MilestoneExtractor] = None) -> None:
+    def __init__(
+        self,
+        milestone_extractor: Optional[MilestoneExtractor] = None,
+        compressor: Optional[Compressor] = None,
+    ) -> None:
         self.milestone_extractor = milestone_extractor or MilestoneExtractor()
+        # Default compressor reproduces the deterministic v0.1/v0.2 summary, so
+        # the benchmark is unchanged; a model-based compressor can be injected.
+        self.compressor = compressor or HeuristicCompressor()
 
     def prune(
         self, graph: GovernedStateGraph, domain_profile: DomainProfile
@@ -139,8 +147,9 @@ class AnchorAwarePruner:
                 block, stage=reason, confidence=max(0.4, utility), step_index=graph.step_index
             )
             graph.add_milestone(milestone)
-            block.content = compress_block(block)
-            block.token_estimate = max(1, len(block.content) // 4)
+            compressed = self.compressor.compress_block(block, graph, target_tokens=0)
+            block.content = compressed.content
+            block.token_estimate = compressed.token_estimate
         block.compressed = True
         block.pruning_state = PruningState.COMPRESSED
         return PruningAction(

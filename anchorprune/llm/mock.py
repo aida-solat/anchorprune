@@ -12,17 +12,28 @@ import re
 from typing import List
 
 from anchorprune.blocks.parser import estimate_tokens
-from anchorprune.llm.base import LLMClient, LLMResult
+from anchorprune.llm.base import LLMClient, LLMRequest, LLMResponse
 
 _ANCHOR_LINE = re.compile(r"^- \[(critical|high|medium|low)\]\s+(.*)$", re.MULTILINE)
 _PROPOSAL_CUES = ("missing", "without", "exceeds", "failed", "requires approval")
 
 
 class MockLLM(LLMClient):
+    """Deterministic, network-free default adapter.
+
+    Implements the v0.3 ``generate`` primitive; the legacy ``complete`` wrapper
+    on :class:`LLMClient` reconstructs the same :class:`LLMResult` the runtime
+    and benchmark consume, so deterministic results are unchanged.
+    """
+
+    provider = "mock"
+    model = "mock-deterministic"
+
     def __init__(self, output_tokens: int = 120) -> None:
         self._output_tokens = output_tokens
 
-    def complete(self, prompt: str) -> LLMResult:
+    def generate(self, request: LLMRequest) -> LLMResponse:
+        prompt = request.prompt
         anchors = [m.group(2).strip() for m in _ANCHOR_LINE.finditer(prompt)]
 
         instruction = self._extract_section(prompt, "Current Step")
@@ -39,11 +50,13 @@ class MockLLM(LLMClient):
             lines.append(f"Observation worth anchoring: {proposed}")
 
         text = "\n".join(lines)
-        return LLMResult(
+        return LLMResponse(
             text=text,
             input_tokens=estimate_tokens(prompt),
             output_tokens=self._output_tokens,
-            proposed_anchor_texts=[proposed] if proposed else [],
+            model=self.model,
+            provider=self.provider,
+            metadata={"proposed_anchor_texts": [proposed] if proposed else []},
         )
 
     @staticmethod

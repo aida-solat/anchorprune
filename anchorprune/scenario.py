@@ -12,12 +12,14 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from anchorprune.anchors.extractors.base import AnchorExtractor
 from anchorprune.blocks.models import PayloadBlockType
 from anchorprune.core.runtime import AnchorPruneRuntime, StepResult
 from anchorprune.domains.profiles import get_domain_profile
 from anchorprune.evidence.models import EvidenceRef, EvidenceSourceType
 from anchorprune.llm.base import LLMClient
 from anchorprune.llm.mock import MockLLM
+from anchorprune.pruning.compressors.base import Compressor
 
 
 def load_scenario(path: str | Path) -> Dict[str, Any]:
@@ -54,11 +56,20 @@ def normalize_steps(scenario: Dict[str, Any]) -> List[NormalizedStep]:
 
 
 def build_runtime(
-    scenario: Dict[str, Any], llm: Optional[LLMClient] = None
+    scenario: Dict[str, Any],
+    llm: Optional[LLMClient] = None,
+    *,
+    anchor_extractor: Optional[AnchorExtractor] = None,
+    compressor: Optional[Compressor] = None,
 ) -> AnchorPruneRuntime:
     domain = scenario.get("domain", "default")
     profile = get_domain_profile(domain)
-    runtime = AnchorPruneRuntime(llm or MockLLM(), domain_profile=profile)
+    runtime = AnchorPruneRuntime(
+        llm or MockLLM(),
+        domain_profile=profile,
+        anchor_extractor=anchor_extractor,
+        compressor=compressor,
+    )
     runtime.create_run(
         goal=scenario.get("goal", ""),
         system_anchors=scenario.get("system_anchors", []),
@@ -109,9 +120,15 @@ def inject_payload(
 
 
 def run_scenario(
-    scenario: Dict[str, Any], llm: Optional[LLMClient] = None
+    scenario: Dict[str, Any],
+    llm: Optional[LLMClient] = None,
+    *,
+    anchor_extractor: Optional[AnchorExtractor] = None,
+    compressor: Optional[Compressor] = None,
 ) -> tuple[AnchorPruneRuntime, List[StepResult]]:
-    runtime = build_runtime(scenario, llm)
+    runtime = build_runtime(
+        scenario, llm, anchor_extractor=anchor_extractor, compressor=compressor
+    )
     output_schema = scenario.get("output_schema")
     label_to_id = getattr(runtime, "_label_to_id", {})
     results: List[StepResult] = []

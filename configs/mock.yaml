@@ -1,0 +1,25 @@
+# Deterministic, network-free pipeline. This is the default mode and the one the
+# benchmark relies on. With deterministic_benchmark_mode: true, the factory
+# forces heuristic components everywhere regardless of the settings below.
+domain: coding_agent
+
+llm:
+  provider: mock
+  model: mock-deterministic
+
+extractor:
+  mode: heuristic
+
+conflict_detector:
+  mode: heuristic
+
+compressor:
+  mode: heuristic
+
+embeddings:
+  provider: hash
+  dim: 64
+
+runtime:
+  token_budget: 32000
+  deterministic_benchmark_mode: true
