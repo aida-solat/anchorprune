@@ -1,5 +1,59 @@
 # Release Notes
 
+## v0.8.0 — Real-Model Evaluation Harness
+
+Adds an **optional, observational** harness that runs AnchorPrune and the three
+memory baselines against real or mock LLM providers — while the deterministic
+benchmark in `benchmarks/` remains the canonical source of truth. No leaderboard,
+no SaaS, no required API keys, and OpenAI/Anthropic stay optional.
+
+### Core principle
+
+> Real-model evaluation is observational. Deterministic benchmarks remain
+> canonical.
+>
+> AnchorPrune changes what reaches the model by governing state before the model
+> call. It does **not** make the underlying model reason better, and v0.8 makes
+> no such claim.
+
+### What shipped
+
+- **`anchorprune real-eval` command.** Options: `--provider mock|openai|anthropic|local`,
+  `--model`, `--scenarios`, `--trials`, `--temperature`, `--policy-pack auto|none|<name>`,
+  `--out`, `--window`, `--seed`, `--save-contexts/--no-save-contexts`,
+  `--save-raw-outputs/--no-save-raw-outputs`.
+- **`anchorprune.evals` package.** `models` (`RealEvalConfig`, `TrialResult`,
+  `MethodAggregate`, `RealEvalSummary`), `evaluators` (deterministic), `trial`
+  (context composition + single-trial execution), `runner` (provider/scenario/
+  pack resolution + loop), `report`, `outputs`, and `real_eval` orchestration.
+- **Four methods compared:** `full_history`, `sliding_window`, `summary`,
+  `anchorprune`. Context composition is deterministic for all four; only the
+  provider's answer is observational.
+- **Separate validity signals.** `context_validity_rate` vs
+  `model_answer_validity_rate`, plus `adversarial_contamination_rate`,
+  `constraint_violation_rate`, `required_anchor_mention_rate`,
+  `forbidden_content_mention_rate`, and `variance_across_trials`.
+- **Provider behavior.** `mock`/`local` run fully offline with no keys;
+  `openai`/`anthropic` use the optional v0.3 adapters; a missing SDK/API key
+  yields a friendly, actionable error. Tests never call real providers.
+- **Policy-pack-aware.** `--policy-pack auto` uses the scenario's pack or a
+  built-in pack matching the scenario name; AnchorPrune's governed context is
+  composed by the pack-configured runtime.
+- **Output directory** (`real_eval_results/`, separate from `benchmarks/`):
+  `results.json`, `report.md` (clearly observational, not canonical),
+  `metadata.json` (pinned provider/model/temperature/trials/policy packs,
+  `canonical_benchmark: false`, `observational: true`), plus per-trial
+  `raw_outputs/` and `contexts/`.
+- **Docs + example.** `docs/real_model_eval.md`, `examples/real_eval/`, and a
+  README section.
+
+### Compatibility
+
+Fully backward compatible and additive. The deterministic benchmark
+(`anchorprune pack --out benchmarks --window 2`) is byte-for-byte unchanged, and
+real eval never reads-modifies-writes `benchmarks/`. The core install gains no
+new dependency.
+
 ## v0.7.0 — Domain Policy Packs
 
 Adds reusable, local, validated **domain policy packs** so a high-stakes

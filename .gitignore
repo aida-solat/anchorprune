@@ -9,6 +9,8 @@ dist/
 .coverage
 htmlcov/
 .anchorprune/
+# Observational real-model eval output (v0.8). Never canonical; not committed.
+real_eval_results/
 .venv/
 venv/
 .DS_Store

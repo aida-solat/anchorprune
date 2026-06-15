@@ -371,6 +371,46 @@ Governor. See [`docs/policy_packs.md`](docs/policy_packs.md) and the runnable
 
 > Policy packs configure governance. They do not perform governance.
 
+## Real-model evaluation
+
+AnchorPrune v0.8 includes an optional **real-model evaluation harness**.
+
+> Real-model evaluations are observational. The deterministic benchmark suite
+> remains the canonical benchmark for AnchorPrune claims.
+
+It runs AnchorPrune and the three baselines (`full_history`, `sliding_window`,
+`summary`) against a real or mock provider, then scores each with a deterministic
+evaluator — separating **context validity** from **model answer validity**. The
+mock provider runs fully offline with no API keys:
+
+```bash
+anchorprune real-eval \
+  --provider mock \
+  --model mock-deterministic \
+  --scenarios coding_agent,contract_review \
+  --trials 3 \
+  --out real_eval_results
+```
+
+Provider-backed runs require optional extras and API keys:
+
+```bash
+pip install -e ".[openai]"
+export OPENAI_API_KEY=...
+anchorprune real-eval --provider openai --model gpt-4.1-mini \
+  --scenarios coding_agent,contract_review --policy-pack auto --trials 5
+```
+
+Output lands in `real_eval_results/` (`results.json`, `report.md`,
+`metadata.json`, plus per-trial `raw_outputs/` and `contexts/`) — always separate
+from `benchmarks/`. **Do not compare provider results across dates or model
+versions unless metadata is pinned.** See
+[`docs/real_model_eval.md`](docs/real_model_eval.md) and
+[`examples/real_eval/`](examples/real_eval/).
+
+> AnchorPrune changes what reaches the model by governing state before the model
+> call. It does not make the underlying model reason better.
+
 ## Installation
 
 ```bash
@@ -397,6 +437,7 @@ anchorprune run --input <scenario> --policy-pack contract_review  # govern via a
 anchorprune packs list                                # built-in domain policy packs (v0.7)
 anchorprune packs show contract_review                # full pack as JSON
 anchorprune packs validate <name|path>                # validate a built-in or a file
+anchorprune real-eval --provider mock --scenarios coding_agent,contract_review  # observational real-model eval (v0.8)
 anchorprune serve --db .anchorprune/anchorprune.db    # local FastAPI service (needs [api])
 ```
 
@@ -461,14 +502,15 @@ anchorprune/
   middleware.py  AnchorPruneMiddleware: generic governed-step seam (v0.6)
   integrations/  langgraph (AnchorPruneNode), llamaindex (AnchorPruneMemory) (v0.6)
   policy_packs/  models, loader, validator, registry, apply, builtins/*.yaml (v0.7)
+  evals/       models, evaluators, trial, runner, report, outputs, real_eval (v0.8)
   benchmark/   harness, report, pack (baselines A/B/C vs AnchorPrune)
   scenario.py  scenario loader/runner (single- and multi-step)
-  cli.py       typer CLI (init/run [--config|--policy-pack]/inspect/benchmark/pack/packs/serve)
+  cli.py       typer CLI (init/run/inspect/benchmark/pack/packs/real-eval/serve)
 configs/       mock.yaml + service.mock.yaml + openai/anthropic example configs
 examples/      short + long_run_* + real_llm_smoke + integrations/coding_agent_loop
 benchmarks/    benchmark_report.md + results.json + long_run_results.csv
 dashboard/     read-only Next.js state-graph dashboard (v0.5)
-docs/          architecture.md, method.md, service.md, dashboard.md, integrations.md, policy_packs.md
+docs/          architecture.md, method.md, service.md, dashboard.md, integrations.md, policy_packs.md, real_model_eval.md
 tests/         full suite (deterministic + adapter contracts + API/persistence)
 ```
 
@@ -487,7 +529,9 @@ tests/         full suite (deterministic + adapter contracts + API/persistence)
   (middleware, LangGraph, LlamaIndex).
 - [`docs/policy_packs.md`](docs/policy_packs.md) — the v0.7 domain policy packs
   (schema, built-ins, validation, application).
-- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1 through v0.7.
+- [`docs/real_model_eval.md`](docs/real_model_eval.md) — the v0.8 observational
+  real-model evaluation harness (methods, metrics, providers, output).
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1 through v0.8.
 
 ## Tests
 
@@ -543,6 +587,11 @@ AnchorPrune is an honest research prototype. Its current boundaries:
   system/domain anchors, risk weights, freshness rules, conflict patterns, and
   decision-context rules. They configure governance; the Anchor Governor still
   performs it. See [`docs/policy_packs.md`](docs/policy_packs.md).
+- **Real-model evaluation harness (shipped in v0.8).** An optional, observational
+  harness (`anchorprune real-eval`) that runs AnchorPrune and the baselines
+  against real or mock providers, separating context validity from model-answer
+  validity. The deterministic benchmark remains canonical; real eval never
+  touches `benchmarks/`. See [`docs/real_model_eval.md`](docs/real_model_eval.md).
 
 ## License
 

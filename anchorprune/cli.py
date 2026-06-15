@@ -225,6 +225,92 @@ def pack(
         console.print(f"[green]Wrote[/green] {path}")
 
 
+@app.command("real-eval")
+def real_eval(
+    provider: str = typer.Option(
+        "mock", help="LLM provider: mock|openai|anthropic|local."
+    ),
+    model: str = typer.Option(
+        "mock-deterministic", help="Model name for the provider."
+    ),
+    scenarios: str = typer.Option(
+        "coding_agent,contract_review",
+        help="Comma-separated scenario names (built-in) or paths.",
+    ),
+    trials: int = typer.Option(3, help="Number of trials per method."),
+    temperature: float = typer.Option(0.0, help="Sampling temperature."),
+    policy_pack: str = typer.Option(
+        "auto", "--policy-pack", help="auto|none|<pack-name> for AnchorPrune runs."
+    ),
+    out: Path = typer.Option(
+        Path("real_eval_results"), help="Output directory (never benchmarks/)."
+    ),
+    window: int = typer.Option(3, help="Sliding-window size for the baseline."),
+    seed: int = typer.Option(42, help="Seed recorded in metadata."),
+    save_contexts: bool = typer.Option(True, help="Write composed contexts."),
+    save_raw_outputs: bool = typer.Option(True, help="Write raw model outputs."),
+) -> None:
+    """Run the observational real-model evaluation harness (v0.8).
+
+    Real-model evaluation is observational; the deterministic benchmark in
+    benchmarks/ remains canonical. The mock provider runs fully offline.
+    """
+
+    from anchorprune.evals import RealEvalConfig, run_real_eval
+    from anchorprune.evals.runner import ProviderUnavailableError
+
+    config = RealEvalConfig(
+        provider=provider,  # type: ignore[arg-type]
+        model=model,
+        scenarios=[s.strip() for s in scenarios.split(",") if s.strip()],
+        trials=trials,
+        temperature=temperature,
+        policy_pack=policy_pack,
+        out_dir=str(out),
+        window=window,
+        seed=seed,
+        save_contexts=save_contexts,
+        save_raw_outputs=save_raw_outputs,
+    )
+
+    try:
+        summary, paths = run_real_eval(config)
+    except ProviderUnavailableError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    except FileNotFoundError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    console.print(
+        "[yellow]Observational run[/yellow] "
+        f"[dim](not the canonical benchmark)[/dim] — "
+        f"{summary.provider}/{summary.model}, {summary.trials} trials"
+    )
+    table = Table(title="Real-model evaluation (observational)")
+    table.add_column("scenario")
+    table.add_column("method")
+    table.add_column("ctx valid", justify="right")
+    table.add_column("answer valid", justify="right")
+    table.add_column("adv contam", justify="right")
+    for agg in summary.aggregates:
+        answer = (
+            "N/A"
+            if agg.model_answer_validity_rate is None
+            else f"{agg.model_answer_validity_rate:.0%}"
+        )
+        table.add_row(
+            agg.scenario,
+            agg.method,
+            f"{agg.context_validity_rate:.0%}",
+            answer,
+            f"{agg.adversarial_contamination_rate:.0%}",
+        )
+    console.print(table)
+    for path in paths:
+        console.print(f"[green]Wrote[/green] {path}")
+
+
 @app.command()
 def serve(
     host: str = typer.Option("127.0.0.1", help="Bind host."),

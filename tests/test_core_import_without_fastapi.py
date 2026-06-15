@@ -36,6 +36,7 @@ for module in (
     "anchorprune.integrations.langgraph",
     "anchorprune.integrations.llamaindex",
     "anchorprune.policy_packs",
+    "anchorprune.evals",
 ):
     importlib.import_module(module)
 
@@ -44,6 +45,17 @@ from anchorprune.policy_packs import get_policy_pack, list_policy_packs
 
 assert "contract_review" in list_policy_packs()
 get_policy_pack("contract_review")
+
+# The v0.8 real-model eval harness must run offline (mock) with FastAPI absent.
+from anchorprune.evals import RealEvalConfig, run_eval
+
+_eval_summary, _ = run_eval(
+    RealEvalConfig(
+        provider="mock", model="mock-deterministic", scenarios=["coding_agent"], trials=1
+    ),
+    version="0.0.0-test",
+)
+assert _eval_summary.observational is True and _eval_summary.canonical_benchmark is False
 
 # The integration layer must work end-to-end with FastAPI absent.
 from anchorprune import AnchorPruneMiddleware
