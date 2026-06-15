@@ -6,7 +6,6 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TCell, THead, TRow, Table } from "@/components/ui/Table";
-import { truncate } from "@/lib/format";
 import type { PayloadBlock, PruningState } from "@/lib/types";
 
 const STATE_TONE: Record<PruningState, BadgeTone> = {
@@ -109,8 +108,8 @@ export function PayloadBlocksPanel({ blocks }: { blocks: PayloadBlock[] }) {
                 <TCell className="tabular-nums text-muted">
                   {b.linked_anchor_ids.length}
                 </TCell>
-                <TCell className="max-w-md text-ink">
-                  {truncate(b.content, 160)}
+                <TCell className="max-w-md whitespace-pre-wrap break-words text-ink">
+                  {b.content}
                 </TCell>
               </TRow>
             ))}

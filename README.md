@@ -1,6 +1,6 @@
 # AnchorPrune
 
-**AnchorPrune v1.0.0 — Stable Governed-State Runtime.**
+**AnchorPrune v1.1.0 — Stable Governed-State Runtime.**
 
 > **AnchorPrune does not make models smarter. It governs what reaches them.**
 
@@ -663,7 +663,7 @@ If you reference AnchorPrune, please cite the method statement and the release:
   title  = {AnchorPrune: Stable Governed-State Runtime for Long-Running AI Agents},
   author = {Ida},
   year   = {2026},
-  version = {1.0.0},
+  version = {1.1.0},
   note   = {Application-layer governed-state pruning runtime. The deterministic
             benchmark is canonical; real-model evaluation is observational.}
 }

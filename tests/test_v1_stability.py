@@ -12,7 +12,7 @@ from anchorprune.cli import app
 REPO = Path(__file__).resolve().parents[1]
 runner = CliRunner()
 
-EXPECTED_VERSION = "1.0.0"
+EXPECTED_VERSION = "1.1.0"
 
 
 def test_public_api_exports():

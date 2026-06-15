@@ -1,5 +1,31 @@
 # Release Notes
 
+## v1.1.0 — Dashboard Inspection Polish
+
+A small, backward-compatible minor release focused on the **read-only dashboard**,
+which v1.0 explicitly marked as an experimental UI surface. **No change to the
+governance method, the public runtime/middleware/policy-pack/CLI APIs, or the
+deterministic benchmark.**
+
+> AnchorPrune does not make models smarter. It governs what reaches them.
+
+### Highlights
+
+- **State-graph spacing fix** — increased the row pitch and clamped node cards to
+  two lines so cards no longer overlap when content is long.
+- **Full payload content** — the **Payload Blocks** panel now shows each block's
+  complete content (wrapped) instead of truncating at 160 characters, matching the
+  Anchors panel.
+- **Full-text on hover** — graph node cards expose the full text via a native
+  tooltip on the whole card (with a help cursor) for quick inspection without
+  leaving the graph.
+
+### Compatibility
+
+Backward compatible. Python/runtime APIs, the CLI, and the canonical deterministic
+benchmark are unchanged; this release only improves dashboard inspection
+ergonomics.
+
 ## v1.0.0 — Stable Governed-State Runtime
 
 AnchorPrune v1.0.0 marks the first stable release of the governed-state runtime

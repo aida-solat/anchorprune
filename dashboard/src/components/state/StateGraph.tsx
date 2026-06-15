@@ -51,8 +51,9 @@ function GraphNode({ data }: NodeProps) {
   const style = KIND_STYLE[kind];
   return (
     <div
-      className="w-56 rounded-lg border bg-panel px-3 py-2 text-left shadow"
+      className="w-56 cursor-help rounded-lg border bg-panel px-3 py-2 text-left shadow"
       style={{ borderColor: style.border }}
+      title={String(data.label)}
     >
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
       <span
@@ -61,10 +62,7 @@ function GraphNode({ data }: NodeProps) {
       >
         {String(data.sub)}
       </span>
-      <p
-        className="mt-0.5 text-xs leading-snug text-ink"
-        title={String(data.label)}
-      >
+      <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-ink">
         {truncate(String(data.label), 90)}
       </p>
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />

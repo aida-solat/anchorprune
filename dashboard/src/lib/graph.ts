@@ -36,7 +36,9 @@ const COLUMN_X: Record<string, number> = {
   payload: 680,
 };
 
-const ROW_H = 96;
+// Row pitch must exceed the rendered card height (sub line + up to 2 clamped
+// content lines + padding) so cards never overlap the row below.
+const ROW_H = 132;
 
 function payloadKind(state: string): GraphNodeKind {
   switch (state) {

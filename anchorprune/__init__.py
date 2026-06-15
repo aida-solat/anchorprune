@@ -28,7 +28,7 @@ from anchorprune.llm.mock import MockLLM
 from anchorprune.middleware import AnchorPruneMiddleware, GovernedContext
 from anchorprune.milestones.models import ReasoningMilestone
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __all__ = [
     "Anchor",
