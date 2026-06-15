@@ -1,10 +1,10 @@
 """v1.0 stabilization checks: frozen public API, CLI, docs, claims, version."""
 
 import json
+import re
 from pathlib import Path
 
 import pytest
-import tomllib
 from typer.testing import CliRunner
 
 from anchorprune.cli import app
@@ -140,10 +140,11 @@ def test_readme_contains_no_forbidden_claims():
 
 
 def test_v1_version_consistency():
-    pyproject = tomllib.loads(
-        (REPO / "pyproject.toml").read_text(encoding="utf-8")
-    )
-    assert pyproject["project"]["version"] == EXPECTED_VERSION
+    # Avoid tomllib (stdlib only on 3.11+); the CI matrix includes 3.10.
+    pyproject_text = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', pyproject_text)
+    assert match is not None, "version not found in pyproject.toml"
+    assert match.group(1) == EXPECTED_VERSION
 
     import anchorprune
 
