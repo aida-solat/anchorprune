@@ -15,13 +15,14 @@ from __future__ import annotations
 import re
 from typing import List
 
+from anchorprune.errors import PolicyPackValidationError
 from anchorprune.policy_packs.models import DomainPolicyPack
 
 _NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SEMVER_RE = re.compile(r"^\d+\.\d+(\.\d+)?$")
 
 
-class PackValidationError(ValueError):
+class PackValidationError(PolicyPackValidationError):
     """Raised when a policy pack fails semantic validation."""
 
 

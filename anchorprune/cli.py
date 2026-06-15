@@ -24,7 +24,9 @@ from anchorprune.scenario import load_scenario, run_scenario
 
 app = typer.Typer(help="Governed Anchored State Pruning for Long-Running AI Agents.")
 packs_app = typer.Typer(help="Inspect and validate domain policy packs (v0.7).")
+db_app = typer.Typer(help="Inspect and migrate the SQLite run store (v0.9).")
 app.add_typer(packs_app, name="packs")
+app.add_typer(db_app, name="db")
 console = Console()
 
 RUNS_DIR = Path(".anchorprune/runs")
@@ -249,6 +251,8 @@ def real_eval(
     seed: int = typer.Option(42, help="Seed recorded in metadata."),
     save_contexts: bool = typer.Option(True, help="Write composed contexts."),
     save_raw_outputs: bool = typer.Option(True, help="Write raw model outputs."),
+    log_format: str = typer.Option("human", help="Log format: human|json."),
+    log_level: str = typer.Option("info", help="Log level: debug|info|warning|error."),
 ) -> None:
     """Run the observational real-model evaluation harness (v0.8).
 
@@ -258,6 +262,9 @@ def real_eval(
 
     from anchorprune.evals import RealEvalConfig, run_real_eval
     from anchorprune.evals.runner import ProviderUnavailableError
+    from anchorprune.observability import configure_logging
+
+    configure_logging(level=log_level, fmt=log_format)
 
     config = RealEvalConfig(
         provider=provider,  # type: ignore[arg-type]
@@ -319,8 +326,18 @@ def serve(
         Path(".anchorprune/anchorprune.db"),
         help="SQLite database path for run persistence.",
     ),
+    log_format: str = typer.Option("human", help="Log format: human|json."),
+    log_level: str = typer.Option("info", help="Log level: debug|info|warning|error."),
 ) -> None:
-    """Start the local FastAPI service (requires `pip install anchorprune[api]`)."""
+    """Start the local FastAPI service (requires `pip install anchorprune[api]`).
+
+    Local-first: do not expose this service directly to the public internet
+    (no auth in v0.9). See docs/security.md.
+    """
+
+    from anchorprune.observability import configure_logging
+
+    configure_logging(level=log_level, fmt=log_format)
 
     try:
         import uvicorn
@@ -338,7 +355,145 @@ def serve(
         f"[green]AnchorPrune API[/green] on http://{host}:{port}  "
         f"[dim](docs at /docs, db={db})[/dim]"
     )
+    console.print(
+        "[yellow]Local-first:[/yellow] do not expose this service to the public "
+        "internet (no auth in v0.9)."
+    )
     uvicorn.run(application, host=host, port=port)
+
+
+@db_app.command("migrate")
+def db_migrate(
+    db: Path = typer.Option(
+        Path(".anchorprune/anchorprune.db"), help="SQLite database path."
+    ),
+) -> None:
+    """Apply pending SQLite migrations (idempotent)."""
+
+    import sqlite3
+
+    from anchorprune.storage.migrations import migration_status, run_migrations
+
+    db.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(db))
+    try:
+        applied = run_migrations(conn)
+        status = migration_status(conn)
+    finally:
+        conn.close()
+    if applied:
+        console.print(f"[green]Applied migrations:[/green] {applied}")
+    else:
+        console.print("[dim]No pending migrations. Database is up to date.[/dim]")
+    console.print(
+        f"Schema version: [bold]{status['current_version']}[/bold] / "
+        f"{status['latest_version']}"
+    )
+
+
+@db_app.command("info")
+def db_info(
+    db: Path = typer.Option(
+        Path(".anchorprune/anchorprune.db"), help="SQLite database path."
+    ),
+) -> None:
+    """Show schema version, applied/pending migrations, and row counts."""
+
+    import sqlite3
+
+    from anchorprune.storage.migrations import migration_status
+
+    if not db.exists():
+        console.print(f"[yellow]Database does not exist yet:[/yellow] {db}")
+        console.print("Run [bold]anchorprune db migrate[/bold] to create it.")
+        raise typer.Exit(code=0)
+
+    conn = sqlite3.connect(str(db))
+    try:
+        status = migration_status(conn)
+        counts = {}
+        for table in ("runs", "state_snapshots", "audit_events", "step_metrics"):
+            try:
+                counts[table] = conn.execute(
+                    f"SELECT COUNT(*) FROM {table}"
+                ).fetchone()[0]
+            except sqlite3.OperationalError:
+                counts[table] = "—"
+    finally:
+        conn.close()
+
+    console.print(f"[bold]Database:[/bold] {db}")
+    console.print(
+        f"[bold]Schema version:[/bold] {status['current_version']} / "
+        f"{status['latest_version']}"
+    )
+    table = Table(title="Migrations")
+    table.add_column("version", justify="right")
+    table.add_column("name")
+    table.add_column("applied_at")
+    for m in status["applied"]:
+        table.add_row(str(m["version"]), m["name"], m["applied_at"])
+    for m in status["pending"]:
+        table.add_row(str(m["version"]), m["name"], "[yellow]pending[/yellow]")
+    console.print(table)
+    counts_table = Table(title="Row counts")
+    counts_table.add_column("table")
+    counts_table.add_column("rows", justify="right")
+    for name, value in counts.items():
+        counts_table.add_row(name, str(value))
+    console.print(counts_table)
+
+
+@app.command()
+def doctor() -> None:
+    """Diagnose the local AnchorPrune install and optional extras."""
+
+    import platform
+
+    from anchorprune import __version__
+
+    console.print("[bold]AnchorPrune doctor[/bold]\n")
+    lines = [
+        ("Version", __version__),
+        ("Python", platform.python_version()),
+    ]
+
+    def _import_ok(module: str) -> bool:
+        try:
+            __import__(module)
+            return True
+        except Exception:
+            return False
+
+    core_ok = _import_ok("anchorprune.core.runtime")
+    lines.append(("Core import", "OK" if core_ok else "FAILED"))
+
+    try:
+        from anchorprune.policy_packs import list_policy_packs
+
+        packs = list_policy_packs()
+        lines.append(("Policy packs", f"OK ({len(packs)})"))
+    except Exception as exc:  # pragma: no cover - defensive
+        lines.append(("Policy packs", f"FAILED ({exc})"))
+
+    lines.append(("API extra", "installed" if _import_ok("fastapi") else "missing"))
+    lines.append(("OpenAI extra", "installed" if _import_ok("openai") else "missing"))
+    lines.append(
+        ("Anthropic extra", "installed" if _import_ok("anthropic") else "missing")
+    )
+
+    repo_root = Path(__file__).resolve().parents[1]
+    examples_ok = (repo_root / "examples").exists()
+    dashboard_ok = (repo_root / "dashboard").exists()
+    lines.append(("Benchmarks/examples", "OK" if examples_ok else "missing"))
+    lines.append(("Dashboard", "present" if dashboard_ok else "missing"))
+
+    table = Table(show_header=False)
+    table.add_column("check", style="bold")
+    table.add_column("status")
+    for label, value in lines:
+        table.add_row(label, str(value))
+    console.print(table)
 
 
 @packs_app.command("list")

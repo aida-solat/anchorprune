@@ -53,12 +53,16 @@ def create_run(
 @router.get("", response_model=RunListResponse)
 def list_runs(
     limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     domain: Optional[str] = Query(None),
     service: RunService = Depends(get_run_service),
 ) -> RunListResponse:
-    runs = service.list_runs(limit=limit, domain=domain)
+    runs = service.list_runs(limit=limit, offset=offset, domain=domain)
     items = [_to_run_response(r) for r in runs]
-    return RunListResponse(runs=items, count=len(items))
+    total = service.count_runs(domain=domain)
+    return RunListResponse(
+        runs=items, count=len(items), limit=limit, offset=offset, total=total
+    )
 
 
 @router.get("/{run_id}", response_model=RunResponse)

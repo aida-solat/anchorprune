@@ -1,5 +1,60 @@
 # Release Notes
 
+## v0.9.0 — Production Hardening
+
+AnchorPrune v0.9.0 hardens the project ahead of v1.0. It focuses on reliability,
+packaging, observability, error handling, local deployment, CI, and documentation
+consistency. **It introduces no new governance claims and does not change the
+deterministic benchmark.**
+
+### Core principle
+
+> v0.9 hardens the system. It does not expand the method.
+
+No new governance logic, no new benchmark claims, no new dashboard features, no
+auth/RBAC, no multi-tenancy, no cloud layer, no policy editor, no leaderboard.
+
+### Highlights
+
+- **Structured logging** (`anchorprune/observability/logging.py`) — human-readable
+  by default, optional JSON (`--log-format json`), configurable level, secret
+  redaction, and metadata truncation so full provider outputs are never logged.
+- **Stable error taxonomy** (`anchorprune/errors.py`) — `AnchorPruneError` plus
+  `ConfigError`, `PolicyPackError`, `PolicyPackValidationError`,
+  `ProviderUnavailableError`, `RuntimeStateError`, `StorageError`,
+  `SerializationError`, `EvaluationError`, `ApiError`. The API now returns a
+  stable `{"error": {"code", "message", "details"}}` shape.
+- **Config validation hardening** (`anchorprune/config/validation.py`) — friendly
+  errors with "Did you mean …?" suggestions for unknown providers, policy packs,
+  config keys, token budgets, eval trials, temperature, and database URLs.
+- **SQLite migrations** (`anchorprune/storage/migrations.py`) — a `schema_migrations`
+  table and an idempotent runner (`001_initial`, `002_add_indexes`,
+  `003_add_version_metadata`) plus query indexes, exposed via `anchorprune db
+migrate` and `anchorprune db info`.
+- **API pagination + response stability** — `limit`/`offset`/`total` on the runs,
+  audit, and metrics list endpoints, added **backward-compatibly** (existing
+  `runs`/`count`, `events`, `steps`/`summary` fields are preserved; the dashboard
+  is unchanged).
+- **`anchorprune doctor`** — diagnoses version, Python, core import, policy packs,
+  optional extras, examples, and dashboard presence.
+- **Docker / dev compose** — `Dockerfile`, `dashboard/Dockerfile`,
+  `docker-compose.yml`, `.dockerignore`, `.env.example`, and a `Makefile`
+  (`dev`/`test`/`lint`/`bench`/`build`).
+- **CI workflow** — Python (lint, tests, deterministic benchmark, offline mock
+  eval), packaging (`python -m build` + `twine check` + wheel import), and the
+  dashboard (`npm run typecheck` + `npm run build`).
+- **Packaging verification** — built-in policy-pack YAMLs ship in the wheel; local
+  and generated artifacts (`real_eval_results`, `.next`, `node_modules`) do not.
+- **Docs consistency** — `docs/index.md`, `docs/security.md` (do not expose the
+  API publicly; local-first), and `docs/v1_readiness.md` (pre-1.0 checklist).
+
+### Compatibility
+
+Backward compatible and additive. The deterministic benchmark
+(`anchorprune pack --out benchmarks --window 2`) is byte-for-byte unchanged. The
+only response-shape change is the API error body, which moved to the stable
+`{"error": {code, message, details}}` form.
+
 ## v0.8.0 — Real-Model Evaluation Harness
 
 Adds an **optional, observational** harness that runs AnchorPrune and the three

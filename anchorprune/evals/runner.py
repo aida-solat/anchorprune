@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from anchorprune.errors import ProviderUnavailableError
 from anchorprune.evals.evaluators import EvalCriteria
 from anchorprune.evals.models import (
     METHODS,
@@ -22,9 +23,13 @@ from anchorprune.evals.trial import aggregate_trials, compose_final_contexts, ru
 from anchorprune.llm.base import LLMClient
 from anchorprune.scenario import load_scenario
 
-
-class ProviderUnavailableError(RuntimeError):
-    """Raised when a provider's optional SDK or API key is unavailable."""
+__all__ = [
+    "ProviderUnavailableError",
+    "build_provider",
+    "resolve_scenario",
+    "resolve_policy_pack",
+    "run_eval",
+]
 
 
 def build_provider(provider: str, model: str) -> LLMClient:

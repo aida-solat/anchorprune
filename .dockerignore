@@ -1,0 +1,25 @@
+# Keep build context small and never ship local state or generated artifacts.
+.git
+.gitignore
+.github
+**/__pycache__
+*.py[cod]
+*.egg-info
+.eggs
+build
+dist
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+.venv
+venv
+.anchorprune
+# Observational eval output is never part of an image.
+real_eval_results
+# Node/Next build artifacts (the dashboard image rebuilds these).
+dashboard/node_modules
+dashboard/.next
+dashboard/tsconfig.tsbuildinfo
+**/.DS_Store
+*.db

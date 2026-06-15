@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, Union
 
 from anchorprune.config.models import AppConfig
+from anchorprune.errors import ConfigError
 
 
 def load_config_dict(path: Union[str, Path]) -> Dict[str, Any]:
@@ -23,12 +24,23 @@ def load_config_dict(path: Union[str, Path]) -> Dict[str, Any]:
     else:
         data = json.loads(text)
     if not isinstance(data, dict):
-        raise ValueError(f"Config at {path} must be a mapping, got {type(data).__name__}")
+        raise ConfigError(
+            f"Config at {path} must be a mapping, got {type(data).__name__}.",
+            details={"path": str(path)},
+        )
     return data
 
 
 def parse_config(data: Dict[str, Any]) -> AppConfig:
-    return AppConfig.model_validate(data)
+    # Friendly, typed validation: unknown keys, then schema, then semantics.
+    from anchorprune.config.validation import validate_app_config, validate_config_keys
+
+    validate_config_keys(data)
+    try:
+        config = AppConfig.model_validate(data)
+    except ValueError as exc:
+        raise ConfigError(f"Invalid config: {exc}") from exc
+    return validate_app_config(config)
 
 
 def load_config(source: Union[str, Path, Dict[str, Any]]) -> AppConfig:

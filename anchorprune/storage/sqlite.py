@@ -89,18 +89,28 @@ class SQLiteRunRepository(RunRepository):
         return run
 
     def list_runs(
-        self, *, limit: int = 50, domain: Optional[str] = None
+        self, *, limit: int = 50, offset: int = 0, domain: Optional[str] = None
     ) -> List[RunRecord]:
         query = "SELECT * FROM runs"
         params: list = []
         if domain:
             query += " WHERE domain = ?"
             params.append(domain)
-        query += " ORDER BY created_at DESC LIMIT ?"
-        params.append(limit)
+        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        params.extend([limit, max(0, offset)])
         with self._lock:
             rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_run(row) for row in rows]
+
+    def count_runs(self, *, domain: Optional[str] = None) -> int:
+        query = "SELECT COUNT(*) FROM runs"
+        params: list = []
+        if domain:
+            query += " WHERE domain = ?"
+            params.append(domain)
+        with self._lock:
+            row = self._conn.execute(query, params).fetchone()
+        return int(row[0]) if row else 0
 
     def delete_run(self, run_id: str) -> bool:
         with self._lock:
@@ -166,13 +176,19 @@ class SQLiteRunRepository(RunRepository):
             )
             self._conn.commit()
 
-    def list_audit_events(self, run_id: str) -> List[AuditEventRecord]:
+    def list_audit_events(
+        self, run_id: str, *, limit: Optional[int] = None, offset: int = 0
+    ) -> List[AuditEventRecord]:
+        query = (
+            "SELECT * FROM audit_events WHERE run_id = ? "
+            "ORDER BY created_at ASC, rowid ASC"
+        )
+        params: list = [run_id]
+        if limit is not None:
+            query += " LIMIT ? OFFSET ?"
+            params.extend([limit, max(0, offset)])
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM audit_events WHERE run_id = ? "
-                "ORDER BY created_at ASC, rowid ASC",
-                (run_id,),
-            ).fetchall()
+            rows = self._conn.execute(query, params).fetchall()
         return [
             AuditEventRecord(
                 id=row["id"],
@@ -184,6 +200,13 @@ class SQLiteRunRepository(RunRepository):
             )
             for row in rows
         ]
+
+    def count_audit_events(self, run_id: str) -> int:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM audit_events WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        return int(row[0]) if row else 0
 
     # ---- step metrics -----------------------------------------------------
 
@@ -203,12 +226,16 @@ class SQLiteRunRepository(RunRepository):
             self._conn.commit()
         return metrics
 
-    def list_step_metrics(self, run_id: str) -> List[StepMetricsRecord]:
+    def list_step_metrics(
+        self, run_id: str, *, limit: Optional[int] = None, offset: int = 0
+    ) -> List[StepMetricsRecord]:
+        query = "SELECT * FROM step_metrics WHERE run_id = ? ORDER BY step_index ASC"
+        params: list = [run_id]
+        if limit is not None:
+            query += " LIMIT ? OFFSET ?"
+            params.extend([limit, max(0, offset)])
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM step_metrics WHERE run_id = ? ORDER BY step_index ASC",
-                (run_id,),
-            ).fetchall()
+            rows = self._conn.execute(query, params).fetchall()
         return [
             StepMetricsRecord(
                 id=row["id"],
@@ -219,6 +246,13 @@ class SQLiteRunRepository(RunRepository):
             )
             for row in rows
         ]
+
+    def count_step_metrics(self, run_id: str) -> int:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM step_metrics WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        return int(row[0]) if row else 0
 
     # ---- helpers ----------------------------------------------------------
 

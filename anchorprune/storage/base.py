@@ -32,8 +32,11 @@ class RunRepository(ABC):
 
     @abstractmethod
     def list_runs(
-        self, *, limit: int = 50, domain: Optional[str] = None
+        self, *, limit: int = 50, offset: int = 0, domain: Optional[str] = None
     ) -> List[RunRecord]: ...
+
+    @abstractmethod
+    def count_runs(self, *, domain: Optional[str] = None) -> int: ...
 
     @abstractmethod
     def delete_run(self, run_id: str) -> bool: ...
@@ -52,7 +55,12 @@ class RunRepository(ABC):
     def add_audit_events(self, events: List[AuditEventRecord]) -> None: ...
 
     @abstractmethod
-    def list_audit_events(self, run_id: str) -> List[AuditEventRecord]: ...
+    def list_audit_events(
+        self, run_id: str, *, limit: Optional[int] = None, offset: int = 0
+    ) -> List[AuditEventRecord]: ...
+
+    @abstractmethod
+    def count_audit_events(self, run_id: str) -> int: ...
 
     # ---- step metrics -----------------------------------------------------
 
@@ -60,4 +68,9 @@ class RunRepository(ABC):
     def add_step_metrics(self, metrics: StepMetricsRecord) -> StepMetricsRecord: ...
 
     @abstractmethod
-    def list_step_metrics(self, run_id: str) -> List[StepMetricsRecord]: ...
+    def list_step_metrics(
+        self, run_id: str, *, limit: Optional[int] = None, offset: int = 0
+    ) -> List[StepMetricsRecord]: ...
+
+    @abstractmethod
+    def count_step_metrics(self, run_id: str) -> int: ...

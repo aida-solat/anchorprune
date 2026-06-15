@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from anchorprune.blocks.models import PayloadBlockType
 from anchorprune.core.runtime import AnchorPruneRuntime, StepResult
+from anchorprune.errors import NotFoundError
 from anchorprune.services.runtime_service import RuntimeService
 from anchorprune.storage.base import RunRepository
 from anchorprune.storage.models import (
@@ -25,8 +26,16 @@ from anchorprune.storage.models import (
 from anchorprune.storage.serialization import serialize_runtime
 
 
-class RunNotFoundError(Exception):
+class RunNotFoundError(NotFoundError):
     """Raised when a run id does not exist in storage."""
+
+    code = "RUN_NOT_FOUND"
+
+    def __init__(self, run_id: str) -> None:
+        super().__init__(
+            f"Run '{run_id}' was not found.", details={"run_id": run_id}
+        )
+        self.run_id = run_id
 
 
 class RunService:
@@ -71,9 +80,12 @@ class RunService:
         return run
 
     def list_runs(
-        self, *, limit: int = 50, domain: Optional[str] = None
+        self, *, limit: int = 50, offset: int = 0, domain: Optional[str] = None
     ) -> List[RunRecord]:
-        return self.repo.list_runs(limit=limit, domain=domain)
+        return self.repo.list_runs(limit=limit, offset=offset, domain=domain)
+
+    def count_runs(self, *, domain: Optional[str] = None) -> int:
+        return self.repo.count_runs(domain=domain)
 
     def delete_run(self, run_id: str) -> None:
         if not self.repo.delete_run(run_id):
@@ -140,10 +152,13 @@ class RunService:
         }
         return state
 
-    def get_audit(self, run_id: str) -> List[Dict[str, Any]]:
+    def get_audit(
+        self, run_id: str, *, limit: Optional[int] = None, offset: int = 0
+    ) -> Dict[str, Any]:
         self.get_run(run_id)  # 404 if missing
-        events = self.repo.list_audit_events(run_id)
-        return [
+        events = self.repo.list_audit_events(run_id, limit=limit, offset=offset)
+        total = self.repo.count_audit_events(run_id)
+        items = [
             {
                 "event_type": e.event_type,
                 "step_index": e.step_index,
@@ -152,23 +167,39 @@ class RunService:
             }
             for e in events
         ]
-
-    def get_metrics(self, run_id: str) -> Dict[str, Any]:
-        self.get_run(run_id)  # 404 if missing
-        records = self.repo.list_step_metrics(run_id)
-        steps = [r.metrics for r in records]
-        total_in = sum(int(s.get("input_tokens", 0)) for s in steps)
-        total_out = sum(int(s.get("output_tokens", 0)) for s in steps)
-        max_context = max((int(s.get("input_tokens", 0)) for s in steps), default=0)
         return {
             "run_id": run_id,
-            "steps": steps,
+            "events": items,
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+        }
+
+    def get_metrics(
+        self, run_id: str, *, limit: Optional[int] = None, offset: int = 0
+    ) -> Dict[str, Any]:
+        self.get_run(run_id)  # 404 if missing
+        # Summary is computed over ALL steps so it is stable regardless of paging.
+        all_steps = [r.metrics for r in self.repo.list_step_metrics(run_id)]
+        total = len(all_steps)
+        total_in = sum(int(s.get("input_tokens", 0)) for s in all_steps)
+        total_out = sum(int(s.get("output_tokens", 0)) for s in all_steps)
+        max_context = max(
+            (int(s.get("input_tokens", 0)) for s in all_steps), default=0
+        )
+        paged = self.repo.list_step_metrics(run_id, limit=limit, offset=offset)
+        return {
+            "run_id": run_id,
+            "steps": [r.metrics for r in paged],
             "summary": {
-                "total_steps": len(steps),
+                "total_steps": total,
                 "total_input_tokens": total_in,
                 "total_output_tokens": total_out,
                 "max_context_size": max_context,
             },
+            "limit": limit,
+            "offset": offset,
+            "total": total,
         }
 
     # ---- internals --------------------------------------------------------

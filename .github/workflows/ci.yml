@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  python:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -19,11 +19,57 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install
-        run: python -m pip install -e ".[dev]"
+      - name: Install (dev + api)
+        run: python -m pip install -e ".[dev,api]"
 
       - name: Lint (ruff)
         run: ruff check .
 
       - name: Test (pytest)
         run: pytest -q
+
+      - name: Deterministic benchmark generation
+        run: anchorprune pack --out /tmp/bench --window 2
+
+      - name: Real-eval mock smoke (offline)
+        run: >
+          anchorprune real-eval --provider mock --model mock-deterministic
+          --scenarios coding_agent --trials 1 --out /tmp/real_eval_smoke
+
+  packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install build tooling
+        run: python -m pip install -e ".[build]"
+      - name: Build sdist + wheel
+        run: python -m build
+      - name: Twine check
+        run: twine check dist/*
+      - name: Verify wheel installs and imports
+        run: |
+          python -m venv /tmp/wheeltest
+          /tmp/wheeltest/bin/pip install dist/*.whl
+          /tmp/wheeltest/bin/python -c "import anchorprune; print(anchorprune.__version__)"
+
+  dashboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build

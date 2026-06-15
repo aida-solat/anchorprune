@@ -411,6 +411,29 @@ versions unless metadata is pinned.** See
 > AnchorPrune changes what reaches the model by governing state before the model
 > call. It does not make the underlying model reason better.
 
+## Operations (v0.9)
+
+v0.9 is a **production-hardening** release: it improves reliability, packaging,
+observability, and docs ahead of v1.0. It adds no new governance method.
+
+```bash
+anchorprune doctor                              # diagnose install + optional extras
+anchorprune db migrate --db .anchorprune/anchorprune.db   # apply SQLite migrations
+anchorprune db info --db .anchorprune/anchorprune.db      # schema version + counts
+anchorprune serve --log-format json --log-level info      # structured JSON logs
+```
+
+What's new in v0.9:
+
+- **Structured logging** — human-readable by default, optional `--log-format json`; secrets redacted, full provider outputs never logged.
+- **Stable error taxonomy** — `anchorprune/errors.py`; the API returns `{"error": {"code", "message", "details"}}`.
+- **Config validation** — friendly "Did you mean …?" suggestions for unknown providers, policy packs, and keys.
+- **SQLite migrations** — `schema_migrations` + idempotent runner, via `anchorprune db migrate`/`info`.
+- **API pagination** — `limit`/`offset`/`total` on list endpoints, backward-compatible.
+- **Local deployment** — `Dockerfile`, `docker-compose.yml` (API + dashboard), `Makefile`.
+
+**Local-first:** the API has no authentication in v0.9 — do not expose it to the public internet. See [`docs/security.md`](docs/security.md) and the [v1.0 readiness checklist](docs/v1_readiness.md).
+
 ## Installation
 
 ```bash

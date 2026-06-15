@@ -1,0 +1,32 @@
+# Local-first AnchorPrune stack (v0.9): API + read-only dashboard.
+#
+# Local-first: bound to localhost ports for local/trusted use only. Do NOT
+# expose these services to the public internet (no auth in v0.9). See
+# docs/security.md.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      anchorprune serve --host 0.0.0.0 --port 8000
+      --db /data/anchorprune.db --log-format json
+    ports:
+      - "8000:8000"
+    volumes:
+      - anchorprune_data:/data
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_ANCHORPRUNE_API_URL: http://localhost:8000
+    depends_on:
+      - api
+
+volumes:
+  anchorprune_data:

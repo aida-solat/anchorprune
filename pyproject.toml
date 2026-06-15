@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anchorprune"
-version = "0.8.0"
+version = "0.9.0"
 description = "Governed Anchored State Pruning for Long-Running AI Agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,6 +35,11 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.5",
     "httpx>=0.27",
+]
+# Packaging verification (v0.9): `python -m build` + `twine check dist/*`.
+build = [
+    "build>=1.2",
+    "twine>=5.0",
 ]
 
 [project.scripts]

@@ -55,6 +55,11 @@ class RunResponse(BaseModel):
 class RunListResponse(BaseModel):
     runs: List[RunResponse]
     count: int
+    # Pagination metadata (v0.9). Added without removing existing fields, so the
+    # dashboard and earlier clients that read ``runs``/``count`` are unaffected.
+    limit: int = 50
+    offset: int = 0
+    total: int = 0
 
 
 class DeleteRunResponse(BaseModel):
@@ -125,9 +130,17 @@ class AuditEvent(BaseModel):
 class AuditResponse(BaseModel):
     run_id: str
     events: List[AuditEvent]
+    # Pagination metadata (v0.9); existing ``events`` field is preserved.
+    limit: Optional[int] = None
+    offset: int = 0
+    total: int = 0
 
 
 class MetricsResponse(BaseModel):
     run_id: str
     steps: List[Dict[str, Any]]
     summary: Dict[str, Any]
+    # Pagination metadata (v0.9); ``steps``/``summary`` are preserved.
+    limit: Optional[int] = None
+    offset: int = 0
+    total: int = 0

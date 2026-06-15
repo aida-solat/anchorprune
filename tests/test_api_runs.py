@@ -42,7 +42,9 @@ def test_get_run(api_client):
 def test_get_missing_run_returns_404(api_client):
     resp = api_client.get("/runs/run_does_not_exist")
     assert resp.status_code == 404
-    assert resp.json()["error"] == "run_not_found"
+    error = resp.json()["error"]
+    assert error["code"] == "RUN_NOT_FOUND"
+    assert error["details"]["run_id"] == "run_does_not_exist"
 
 
 def test_list_runs_and_domain_filter(api_client):
