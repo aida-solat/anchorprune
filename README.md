@@ -1,16 +1,40 @@
 # AnchorPrune
 
-> **AnchorPrune does not summarize agent history. It governs agent state.**
+**AnchorPrune v1.0.0 — Stable Governed-State Runtime.**
 
-AnchorPrune is an **application-layer runtime method** for long-running AI
-agents. Instead of repeatedly replaying raw conversation history into the model,
-it transforms linear context into a **governed state graph** whose objects are
+> **AnchorPrune does not make models smarter. It governs what reaches them.**
+
+AnchorPrune is an **application-layer governed-state pruning runtime** for
+long-running AI agents. It does not summarize agent history; it governs which
+state is allowed to influence future context.
+
+- Summarization compresses text.
+- AnchorPrune governs state influence.
+
+Instead of repeatedly replaying raw conversation history into the model, it
+transforms linear context into a **governed state graph** whose objects are
 preserved, quarantined, compressed, or evicted according to explicit governance
-rules — not according to how "important" a sentence happens to sound.
+rules — not according to how "important" a sentence happens to sound. Its
+first-order objective is **constraint adherence and governed state retention**,
+not token minimization, and it is **not** about model internals, KV-cache, or GPU
+memory.
 
-It is **not** about model internals, KV-cache, or GPU memory. Its first-order
-objective is **constraint adherence and governed state retention**, not token
-minimization.
+> v1.0 freezes the public runtime, middleware, policy-pack, CLI, benchmark,
+> service, dashboard, and evaluation surfaces. AnchorPrune is now stable enough
+> for external engineers to install, run, inspect, and evaluate. It is a stable
+> **research/runtime artifact**, not a production enterprise platform.
+
+## What AnchorPrune is not
+
+- It is **not** a way to make an LLM reason better or guarantee correct answers.
+- It is **not** a long-context memory solver, a RAG/vector-DB replacement, or a
+  universal safety system.
+- It does **not** prevent all prompt injection.
+- It is **not** a production enterprise platform, and has **no authentication**
+  (local-first only).
+
+See [`docs/claims.md`](docs/claims.md) for the full allowed-vs-forbidden claims
+list and [`docs/api_stability.md`](docs/api_stability.md) for the frozen API.
 
 ---
 
@@ -539,6 +563,11 @@ tests/         full suite (deterministic + adapter contracts + API/persistence)
 
 ## Documentation
 
+- [`docs/index.md`](docs/index.md) — the documentation map.
+- [`docs/api_stability.md`](docs/api_stability.md) — the **frozen** v1.x public
+  API surface (and what is experimental).
+- [`docs/claims.md`](docs/claims.md) — allowed vs. forbidden claims.
+- [`docs/examples.md`](docs/examples.md) — every runnable example.
 - [`docs/method.md`](docs/method.md) — the central technical claim and how it
   differs from summarization.
 - [`docs/architecture.md`](docs/architecture.md) — component-by-component design.
@@ -554,7 +583,9 @@ tests/         full suite (deterministic + adapter contracts + API/persistence)
   (schema, built-ins, validation, application).
 - [`docs/real_model_eval.md`](docs/real_model_eval.md) — the v0.8 observational
   real-model evaluation harness (methods, metrics, providers, output).
-- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1 through v0.8.
+- [`docs/security.md`](docs/security.md) — local-first security/safety notes.
+- [`docs/v1_readiness.md`](docs/v1_readiness.md) — the v1.0 readiness checklist.
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1 through v1.0.
 
 ## Tests
 
@@ -615,6 +646,31 @@ AnchorPrune is an honest research prototype. Its current boundaries:
   against real or mock providers, separating context validity from model-answer
   validity. The deterministic benchmark remains canonical; real eval never
   touches `benchmarks/`. See [`docs/real_model_eval.md`](docs/real_model_eval.md).
+- **Stabilization (shipped in v1.0).** The public runtime, middleware,
+  policy-pack, CLI, benchmark, service, dashboard, and evaluation surfaces are
+  frozen for the v1.x series. See [`docs/api_stability.md`](docs/api_stability.md).
+
+## Citation / attribution
+
+If you reference AnchorPrune, please cite the method statement and the release:
+
+> AnchorPrune is an application-layer governed-state pruning runtime for
+> long-running AI agents. It does not summarize agent history; it governs which
+> state is allowed to influence future context.
+
+```bibtex
+@software{anchorprune_2026,
+  title  = {AnchorPrune: Stable Governed-State Runtime for Long-Running AI Agents},
+  author = {Ida},
+  year   = {2026},
+  version = {1.0.0},
+  note   = {Application-layer governed-state pruning runtime. The deterministic
+            benchmark is canonical; real-model evaluation is observational.}
+}
+```
+
+Please honor the [claims policy](docs/claims.md): AnchorPrune governs what reaches
+a model; it does not make models smarter or guarantee correctness.
 
 ## License
 

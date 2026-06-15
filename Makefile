@@ -1,7 +1,7 @@
 # AnchorPrune developer tasks (v0.9). Local-first; nothing here touches a network
 # unless you explicitly run a real provider.
 
-.PHONY: help dev test lint bench real-eval-smoke build migrate doctor compose-config
+.PHONY: help dev test lint bench real-eval-smoke build migrate doctor compose-config demo
 
 help:
 	@echo "AnchorPrune make targets:"
@@ -14,6 +14,10 @@ help:
 	@echo "  make migrate          Apply SQLite migrations"
 	@echo "  make doctor           Diagnose the install"
 	@echo "  make compose-config   Validate docker-compose.yml"
+	@echo "  make demo             Run the v1.0 one-button offline demo"
+
+demo:
+	bash scripts/demo_v1.sh
 
 dev:
 	python -m pip install -e ".[dev,api]"

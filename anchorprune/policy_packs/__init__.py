@@ -45,6 +45,29 @@ from anchorprune.policy_packs.validator import (
     validate_pack_or_raise,
 )
 
+
+def validate_policy_pack(pack_or_name):
+    """Validate a policy pack and return it (stable v1.0 public API).
+
+    Accepts a :class:`DomainPolicyPack`, a built-in pack name, or a path to a
+    pack file. Raises :class:`PackValidationError` on any semantic error.
+    """
+
+    from pathlib import Path
+
+    if isinstance(pack_or_name, DomainPolicyPack):
+        return validate_pack_or_raise(pack_or_name)
+    if isinstance(pack_or_name, (str, Path)):
+        text = str(pack_or_name)
+        if not isinstance(pack_or_name, Path) and has_policy_pack(text):
+            return get_policy_pack(text)
+        return load_policy_pack(pack_or_name)
+    raise TypeError(
+        "validate_policy_pack expects a DomainPolicyPack, a built-in pack name, "
+        f"or a path; got {type(pack_or_name).__name__}."
+    )
+
+
 __all__ = [
     "DomainPolicyPack",
     "PackDomainProfile",
@@ -62,6 +85,7 @@ __all__ = [
     "PolicyPackNotFound",
     "validate_pack",
     "validate_pack_or_raise",
+    "validate_policy_pack",
     "PackValidationError",
     "resolve_pack",
     "pack_to_domain_profile",

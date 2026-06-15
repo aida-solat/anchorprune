@@ -4,6 +4,18 @@ A map of the docs and what each one is for. AnchorPrune is **local-first** and
 the deterministic benchmark remains the **canonical** benchmark; real-model
 evaluation is observational.
 
+> AnchorPrune does not make models smarter. It governs what reaches them.
+
+## Stability & honesty (v1.0)
+
+- [`api_stability.md`](api_stability.md) — the frozen public API surface for the
+  v1.x series, and what is experimental.
+- [`claims.md`](claims.md) — allowed vs. forbidden claims; what AnchorPrune is
+  and is not.
+- [`examples.md`](examples.md) — every runnable example, its command, and what
+  not to claim.
+- [`release_checklist.md`](release_checklist.md) — the repeatable release steps.
+
 ## Start here
 
 - [`../README.md`](../README.md) — what AnchorPrune is, what it is not,

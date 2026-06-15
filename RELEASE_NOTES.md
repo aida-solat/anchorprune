@@ -1,5 +1,63 @@
 # Release Notes
 
+## v1.0.0 — Stable Governed-State Runtime
+
+AnchorPrune v1.0.0 marks the first stable release of the governed-state runtime
+for long-running AI agents. It **freezes** the public runtime, middleware,
+policy-pack, CLI, benchmark, service, dashboard, and evaluation surfaces
+established across v0.1–v0.9. It is a **stabilization** release — no new
+governance logic, no new benchmark claims, no new features.
+
+### Core statement
+
+> AnchorPrune does not make models smarter. It governs what reaches them.
+
+AnchorPrune is an application-layer governed-state pruning runtime for
+long-running AI agents. It does not summarize agent history; it governs which
+state is allowed to influence future context. Summarization compresses text;
+AnchorPrune governs state influence.
+
+### What is frozen (stable for v1.x)
+
+- **Runtime API** — `AnchorPruneRuntime` with `run_step`, `govern_and_compose`,
+  `ingest_model_output`, `add_tool_output`, and `from_policy_pack`.
+- **Middleware API** — `AnchorPruneMiddleware.before_model_call` /
+  `after_model_call`.
+- **Policy-pack API** — `get_policy_pack`, `list_policy_packs`,
+  `validate_policy_pack`.
+- **CLI command set** — `run`, `inspect`, `benchmark`, `pack`, `packs
+list/show/validate`, `serve`, `real-eval`, `db migrate/info`, `doctor`.
+- **API service shape** — stable error envelope `{"error": {code, message,
+details}}` and `limit`/`offset`/`total` pagination.
+
+See [`docs/api_stability.md`](docs/api_stability.md). Provider adapters,
+provider-backed real-model eval results, and the dashboard UI layout are marked
+**experimental**.
+
+### What is retained (unchanged)
+
+- The **deterministic benchmark suite** remains the canonical benchmark.
+- The **API service and dashboard** remain local-first inspection tools.
+- The **integration layer** (middleware, LangGraph, LlamaIndex) is retained.
+- **Real-model evaluation** is retained as **observational**.
+
+### Documentation & verification
+
+- New: [`docs/api_stability.md`](docs/api_stability.md),
+  [`docs/claims.md`](docs/claims.md) (allowed vs. forbidden claims),
+  [`docs/examples.md`](docs/examples.md), and
+  [`docs/release_checklist.md`](docs/release_checklist.md).
+- Every example ships a `README.md` (purpose, command, expected output, what not
+  to claim).
+- One-button offline demo: `make demo` / `scripts/demo_v1.sh`.
+- Version is `1.0.0` across the package, the API `/health`, `doctor`, and the
+  dashboard.
+
+### Compatibility
+
+Backward compatible with v0.9. This is a stabilization release: the deterministic
+benchmark is byte-for-byte unchanged and no public API was removed.
+
 ## v0.9.0 — Production Hardening
 
 AnchorPrune v0.9.0 hardens the project ahead of v1.0. It focuses on reliability,
