@@ -6,9 +6,15 @@ build/
 dist/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
 .anchorprune/
+*.db
+.env
+.env.local
+dashboard/.next/
+dashboard/node_modules/
 # Observational real-model eval output (v0.8). Never canonical; not committed.
 real_eval_results/
 .venv/

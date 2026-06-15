@@ -1,5 +1,11 @@
 # AnchorPrune
 
+[![CI](https://github.com/aida-solat/anchorprune/actions/workflows/ci.yml/badge.svg)](https://github.com/aida-solat/anchorprune/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Tests](https://img.shields.io/badge/tests-206%20passing-brightgreen)
+![Status](https://img.shields.io/badge/status-v1.1.0%20stable-brightgreen)
+![License](https://img.shields.io/badge/license-Apache--2.0-blue)
+
 **AnchorPrune v1.1.0 — Stable Governed-State Runtime.**
 
 > **AnchorPrune does not make models smarter. It governs what reaches them.**
@@ -674,4 +680,4 @@ a model; it does not make models smarter or guarantee correctness.
 
 ## License
 
-MIT
+Apache License 2.0
