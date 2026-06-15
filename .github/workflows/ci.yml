@@ -68,7 +68,10 @@ jobs:
           cache: npm
           cache-dependency-path: dashboard/package-lock.json
       - name: Install
-        run: npm ci
+        # Use install (not ci): optional native deps (@emnapi/*) resolve
+        # per-platform, so a macOS-generated lockfile can mismatch the Linux
+        # runner under the strict `npm ci` match.
+        run: npm install --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
       - name: Build
