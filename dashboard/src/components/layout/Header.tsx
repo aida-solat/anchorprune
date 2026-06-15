@@ -1,11 +1,13 @@
 import { DASHBOARD_VERSION } from "@/lib/version";
 
 import { ApiStatus } from "./ApiStatus";
+import { Logo } from "./Logo";
 
 export function Header() {
   return (
     <header className="flex items-center justify-between border-b border-border bg-panel/80 px-5 py-3 backdrop-blur">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <Logo size={20} className="md:hidden" />
         <span className="text-sm font-semibold text-ink md:hidden">
           AnchorPrune
         </span>
