@@ -339,6 +339,38 @@ See [`docs/integrations.md`](docs/integrations.md).
 
 > AnchorPrune is not the agent. It is the governor around the agent's memory.
 
+## Domain policy packs
+
+AnchorPrune v0.7 includes built-in **domain policy packs** for `procurement`,
+`coding_agent`, `contract_review`, `compliance`, and `security_review`. A pack
+defines system anchors, domain-specific scoring weights, freshness rules,
+conflict patterns, and decision-context expectations for a high-stakes workflow.
+
+```python
+from anchorprune import AnchorPruneRuntime, MockLLM
+from anchorprune.policy_packs import get_policy_pack
+
+rt = AnchorPruneRuntime.from_policy_pack(llm=MockLLM(), policy_pack="contract_review")
+rt.create_run(goal="Review the vendor contract.")
+```
+
+Packs also work through the middleware (`AnchorPruneMiddleware(policy_pack=...)`),
+scenarios (`"policy_pack": "contract_review"`), the config (`policy_pack:`), and
+the CLI (`anchorprune run --policy-pack contract_review`).
+
+```bash
+anchorprune packs list
+anchorprune packs show contract_review
+anchorprune packs validate anchorprune/policy_packs/builtins/contract_review.yaml
+```
+
+A pack configures the domain profile, seeds anchors, and supplies conflict
+patterns — but every anchor decision and quarantine is still made by the Anchor
+Governor. See [`docs/policy_packs.md`](docs/policy_packs.md) and the runnable
+[`examples/policy_packs/contract_review_pack_demo/`](examples/policy_packs/contract_review_pack_demo/).
+
+> Policy packs configure governance. They do not perform governance.
+
 ## Installation
 
 ```bash
@@ -361,6 +393,10 @@ anchorprune inspect --run-id <run_id>                  # anchors, milestones, au
 anchorprune benchmark --input examples/supplier/scenario.json
 anchorprune pack --out benchmarks                      # full Benchmark Pack v0.1
 anchorprune run --input <scenario> --config configs/mock.yaml  # pipeline via config
+anchorprune run --input <scenario> --policy-pack contract_review  # govern via a policy pack
+anchorprune packs list                                # built-in domain policy packs (v0.7)
+anchorprune packs show contract_review                # full pack as JSON
+anchorprune packs validate <name|path>                # validate a built-in or a file
 anchorprune serve --db .anchorprune/anchorprune.db    # local FastAPI service (needs [api])
 ```
 
@@ -424,14 +460,15 @@ anchorprune/
   api/         FastAPI app, routes/, schemas, dependencies, errors (v0.4)
   middleware.py  AnchorPruneMiddleware: generic governed-step seam (v0.6)
   integrations/  langgraph (AnchorPruneNode), llamaindex (AnchorPruneMemory) (v0.6)
+  policy_packs/  models, loader, validator, registry, apply, builtins/*.yaml (v0.7)
   benchmark/   harness, report, pack (baselines A/B/C vs AnchorPrune)
   scenario.py  scenario loader/runner (single- and multi-step)
-  cli.py       typer CLI (init/run [--config]/inspect/benchmark/pack/serve)
+  cli.py       typer CLI (init/run [--config|--policy-pack]/inspect/benchmark/pack/packs/serve)
 configs/       mock.yaml + service.mock.yaml + openai/anthropic example configs
 examples/      short + long_run_* + real_llm_smoke + integrations/coding_agent_loop
 benchmarks/    benchmark_report.md + results.json + long_run_results.csv
 dashboard/     read-only Next.js state-graph dashboard (v0.5)
-docs/          architecture.md, method.md, service.md, dashboard.md, integrations.md
+docs/          architecture.md, method.md, service.md, dashboard.md, integrations.md, policy_packs.md
 tests/         full suite (deterministic + adapter contracts + API/persistence)
 ```
 
@@ -448,7 +485,9 @@ tests/         full suite (deterministic + adapter contracts + API/persistence)
   dashboard.
 - [`docs/integrations.md`](docs/integrations.md) — the v0.6 integration layer
   (middleware, LangGraph, LlamaIndex).
-- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1 through v0.6.
+- [`docs/policy_packs.md`](docs/policy_packs.md) — the v0.7 domain policy packs
+  (schema, built-ins, validation, application).
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — what shipped in v0.1 through v0.7.
 
 ## Tests
 
@@ -499,9 +538,11 @@ AnchorPrune is an honest research prototype. Its current boundaries:
   plus LangGraph (`AnchorPruneNode`) and LlamaIndex (`AnchorPruneMemory`)
   adapters so AnchorPrune wraps existing agent workflows without becoming a
   framework. See [`docs/integrations.md`](docs/integrations.md).
-- **Domain policy packs (planned, v0.7).** Stronger per-domain profiles
-  (procurement, coding_agent, contract_review, finance/healthcare stubs) with
-  system/domain anchors, risk weights, freshness rules, and conflict patterns.
+- **Domain policy packs (shipped in v0.7).** Built-in per-domain profiles
+  (procurement, coding_agent, contract_review, compliance, security_review) with
+  system/domain anchors, risk weights, freshness rules, conflict patterns, and
+  decision-context rules. They configure governance; the Anchor Governor still
+  performs it. See [`docs/policy_packs.md`](docs/policy_packs.md).
 
 ## License
 

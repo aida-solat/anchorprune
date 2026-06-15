@@ -7,6 +7,8 @@ AnchorPrune governed step around *its own* model call:
     from anchorprune import AnchorPruneMiddleware
 
     mw = AnchorPruneMiddleware(domain="procurement")
+    # ...or configure governance from a built-in policy pack:
+    mw = AnchorPruneMiddleware(policy_pack="contract_review")
     mw.create_run(run_id="run_123", goal="Decide whether approval is allowed.")
 
     governed = mw.before_model_call(
@@ -74,6 +76,10 @@ class AnchorPruneMiddleware:
 
     - ``domain``: a built-in domain profile name (e.g. ``"procurement"``,
       ``"coding_agent"``). Unknown names fall back to the default profile.
+    - ``policy_pack``: an optional built-in policy pack name (or pack object).
+      When set, the pack supplies the domain profile, conflict patterns, and
+      seed anchors; it takes precedence over ``domain``. The pack only
+      configures governance — the Anchor Governor still decides.
     - ``config``: an optional config name or path (e.g. ``"configs/mock.yaml"``).
       Defaults to the deterministic mock pipeline — no network, no randomness.
     - ``system_anchors`` / ``goal``: defaults applied to runs created without
@@ -85,11 +91,13 @@ class AnchorPruneMiddleware:
         domain: str = "default",
         config: Optional[str] = None,
         *,
+        policy_pack: Optional[Any] = None,
         goal: str = "",
         system_anchors: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         self.domain = domain
         self.config_name = config
+        self.policy_pack = policy_pack
         self._default_goal = goal
         self._default_system_anchors = system_anchors or []
         self._runtimes: Dict[str, AnchorPruneRuntime] = {}
@@ -198,6 +206,10 @@ class AnchorPruneMiddleware:
     # ---- internals --------------------------------------------------------
 
     def _build_runtime(self) -> AnchorPruneRuntime:
+        if self.policy_pack is not None:
+            from anchorprune.policy_packs.apply import build_runtime_from_pack
+
+            return build_runtime_from_pack(self.policy_pack)
         config = resolve_config(self.config_name, domain=self.domain)
         return build_runtime(config)
 

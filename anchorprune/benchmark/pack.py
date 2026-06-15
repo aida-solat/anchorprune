@@ -49,6 +49,22 @@ def run_pack(
     return pack
 
 
+def scenario_pack_info(scenarios: Dict[str, Path]) -> Dict[str, Optional[dict]]:
+    """Map each scenario to the policy pack ({name, version}) it uses, or None."""
+
+    from anchorprune.policy_packs.registry import get_policy_pack
+
+    info: Dict[str, Optional[dict]] = {}
+    for name, path in scenarios.items():
+        pack_name = load_scenario(path).get("policy_pack")
+        if pack_name:
+            pack = get_policy_pack(pack_name)
+            info[name] = {"name": pack.name, "version": pack.version}
+        else:
+            info[name] = None
+    return info
+
+
 def write_pack(
     out_dir: Path,
     scenarios: Optional[Dict[str, Path]] = None,
@@ -62,19 +78,25 @@ def write_pack(
     growth). Returns ``[report, results, csv]``.
     """
 
-    short_pack = run_pack(scenarios or DEFAULT_SCENARIOS, window=window)
+    short_scenarios = scenarios or DEFAULT_SCENARIOS
+    short_pack = run_pack(short_scenarios, window=window)
     long_pack = run_pack(LONG_RUN_SCENARIOS, window=window)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    packs_info = {
+        **scenario_pack_info(short_scenarios),
+        **scenario_pack_info(LONG_RUN_SCENARIOS),
+    }
 
     report_path = out_dir / "benchmark_report.md"
     results_path = out_dir / "results.json"
     csv_path = out_dir / "long_run_results.csv"
 
     report_path.write_text(
-        build_full_report(short_pack, long_pack), encoding="utf-8"
+        build_full_report(short_pack, long_pack, packs_info), encoding="utf-8"
     )
     results_path.write_text(
-        json.dumps(build_full_results(short_pack, long_pack), indent=2),
+        json.dumps(build_full_results(short_pack, long_pack, packs_info), indent=2),
         encoding="utf-8",
     )
     csv_path.write_text(build_long_run_csv(long_pack), encoding="utf-8")

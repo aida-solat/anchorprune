@@ -32,14 +32,23 @@ def result_to_dict(result: BenchmarkResult) -> dict:
     return result.model_dump()
 
 
-def build_results_json(pack: Dict[str, Dict[str, BenchmarkResult]]) -> dict:
-    """pack: {scenario_name: {method_key: BenchmarkResult}}."""
+def build_results_json(
+    pack: Dict[str, Dict[str, BenchmarkResult]],
+    scenario_packs: Optional[Dict[str, Optional[dict]]] = None,
+) -> dict:
+    """pack: {scenario_name: {method_key: BenchmarkResult}}.
 
-    out: dict = {"version": "0.1", "scenarios": {}}
+    ``scenario_packs`` optionally maps each scenario to the policy pack that
+    configured its AnchorPrune run ({"name", "version"}) or ``None``.
+    """
+
+    scenario_packs = scenario_packs or {}
+    out: dict = {"version": "0.1", "scenarios": {}, "policy_packs": {}}
     for scenario_name, methods in pack.items():
         out["scenarios"][scenario_name] = {
             key: result_to_dict(res) for key, res in methods.items()
         }
+        out["policy_packs"][scenario_name] = scenario_packs.get(scenario_name)
     return out
 
 
@@ -49,8 +58,20 @@ def _fmt(value: Optional[float]) -> str:
     return f"{value:.0%}"
 
 
-def _scenario_section(scenario_name: str, methods: Dict[str, BenchmarkResult]) -> str:
+def _pack_line(scenario_name: str, scenario_packs: Dict[str, Optional[dict]]) -> str:
+    info = scenario_packs.get(scenario_name)
+    if info:
+        return f"_Policy pack: `{info['name']}` v{info['version']}._"
+    return "_Policy pack: none (domain profile only)._"
+
+
+def _scenario_section(
+    scenario_name: str,
+    methods: Dict[str, BenchmarkResult],
+    scenario_packs: Optional[Dict[str, Optional[dict]]] = None,
+) -> str:
     lines: List[str] = [f"## Scenario: `{scenario_name}`", ""]
+    lines += [_pack_line(scenario_name, scenario_packs or {}), ""]
 
     # Metric comparison table.
     header = "| Metric | " + " | ".join(
@@ -117,7 +138,10 @@ def _headline(pack: Dict[str, Dict[str, BenchmarkResult]]) -> List[str]:
     return ["> " + claim, ""]
 
 
-def build_markdown(pack: Dict[str, Dict[str, BenchmarkResult]]) -> str:
+def build_markdown(
+    pack: Dict[str, Dict[str, BenchmarkResult]],
+    scenario_packs: Optional[Dict[str, Optional[dict]]] = None,
+) -> str:
     lines: List[str] = [
         "# AnchorPrune Benchmark Pack v0.1",
         "",
@@ -165,7 +189,7 @@ def build_markdown(pack: Dict[str, Dict[str, BenchmarkResult]]) -> str:
         "| --- | --- | --- |",
         "| `supplier` | procurement | Recommend a supplier; compliance + approval limits |",
         "| `coding_agent` | coding_agent | Fix a failing auth test without weakening security |",
-        "| `contract_review` | compliance | Approve a contract only with a cited liability cap |",
+        "| `contract_review` | contract_review (policy pack) | Approve a contract only with a cited liability cap |",
         "",
         "## 4. Metrics",
         "",
@@ -191,7 +215,7 @@ def build_markdown(pack: Dict[str, Dict[str, BenchmarkResult]]) -> str:
         "",
     ]
     for scenario_name, methods in pack.items():
-        lines.append(_scenario_section(scenario_name, methods))
+        lines.append(_scenario_section(scenario_name, methods, scenario_packs))
 
     lines += [
         "## 6. Interpretation",
@@ -410,11 +434,12 @@ def build_long_run_markdown(pack: Dict[str, Dict[str, BenchmarkResult]]) -> str:
 def build_full_report(
     short_pack: Dict[str, Dict[str, BenchmarkResult]],
     long_pack: Dict[str, Dict[str, BenchmarkResult]],
+    scenario_packs: Optional[Dict[str, Optional[dict]]] = None,
 ) -> str:
     """Combined report: Part 1 (v0.1 short) + Part 2 (v0.2 long-run)."""
 
     return (
-        build_markdown(short_pack)
+        build_markdown(short_pack, scenario_packs)
         + "\n\n---\n\n"
         + build_long_run_markdown(long_pack)
     )
@@ -423,6 +448,7 @@ def build_full_report(
 def build_full_results(
     short_pack: Dict[str, Dict[str, BenchmarkResult]],
     long_pack: Dict[str, Dict[str, BenchmarkResult]],
+    scenario_packs: Optional[Dict[str, Optional[dict]]] = None,
 ) -> dict:
     return {
         "version": "0.2",
@@ -434,6 +460,7 @@ def build_full_results(
             name: {k: result_to_dict(r) for k, r in methods.items()}
             for name, methods in long_pack.items()
         },
+        "policy_packs": dict(scenario_packs or {}),
     }
 
 

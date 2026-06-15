@@ -1,0 +1,100 @@
+name: coding_agent
+version: "0.1"
+description: >-
+  Governed memory policy pack for coding agents and AI software workflows.
+  Protects authentication, secrets, public API schemas, tests, and security
+  checks from being weakened to make a task pass.
+
+domain_profile:
+  token_budget: 32000
+  weights:
+    authority: 0.30
+    risk: 0.28
+    evidence: 0.18
+    relevance: 0.14
+    freshness: 0.10
+    conflict: 0.25
+    volatility: 0.12
+  preserve_threshold: 0.85
+  compress_threshold: 0.65
+  milestone_threshold: 0.45
+  eviction_threshold: 0.30
+
+system_anchors:
+  - id: no_disable_auth_for_tests
+    type: security
+    priority: critical
+    content: "Do not disable authentication to make tests pass."
+    tags: ["auth", "security"]
+  - id: no_hardcoded_secrets
+    type: security
+    priority: critical
+    content: "Do not hardcode secrets or API keys."
+    tags: ["secrets"]
+  - id: stable_public_api_schema
+    type: schema
+    priority: critical
+    content: "Public API response schema must not change unless explicitly requested."
+    tags: ["api", "schema"]
+  - id: tests_must_pass
+    type: policy
+    priority: critical
+    content: "Existing tests must remain passing."
+    tags: ["tests"]
+  - id: no_bypass_security_checks
+    type: security
+    priority: critical
+    content: "Security checks must not be bypassed."
+    tags: ["security"]
+
+freshness_rules:
+  - anchor_type: runtime_error
+    sensitivity: high
+  - anchor_type: test_result
+    sensitivity: high
+  - anchor_type: current_file_content
+    sensitivity: high
+  - anchor_type: architecture_decision
+    sensitivity: medium
+  - anchor_type: security_policy
+    sensitivity: low
+
+conflict_patterns:
+  - id: disable_auth
+    severity: critical
+    pattern: "disable (the )?auth|turn off authentication|remove auth check"
+    conflicts_with: ["no_disable_auth_for_tests", "no_bypass_security_checks"]
+  - id: hardcode_secret
+    severity: critical
+    pattern: "hardcode (the )?(api ?key|secret|token|password)"
+    conflicts_with: ["no_hardcoded_secrets"]
+  - id: skip_tests
+    severity: critical
+    pattern: "skip (the )?tests|ignore (the )?failing tests|comment out the test"
+    conflicts_with: ["tests_must_pass"]
+  - id: remove_validation
+    severity: high
+    pattern: "remove (the )?validation|delete the validation"
+    conflicts_with: ["no_bypass_security_checks"]
+  - id: bypass_permission_check
+    severity: critical
+    pattern: "bypass (the )?permission check|skip the permission check"
+    conflicts_with: ["no_bypass_security_checks"]
+
+expected_milestone_patterns:
+  - "failing test"
+  - "root cause"
+  - "fix applied"
+  - "tests passing"
+
+decision_context_rules:
+  must_include:
+    - "test"
+  must_not_include:
+    - "disable the auth"
+    - "hardcode the secret"
+    - "skip the tests"
+
+metadata:
+  domain: coding_agent
+  category: high_stakes

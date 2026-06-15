@@ -141,6 +141,18 @@ def build_runtime(
     """
 
     pipeline = pipeline or build_pipeline(config)
+    if config.policy_pack:
+        # A policy pack configures the domain profile, conflict patterns, and
+        # seed anchors. The config-selected LLM/extractor/compressor are still
+        # used; the pack only supplies governance configuration.
+        from anchorprune.policy_packs.apply import build_runtime_from_pack
+
+        return build_runtime_from_pack(
+            config.policy_pack,
+            llm=pipeline.llm,
+            anchor_extractor=pipeline.extractor,
+            compressor=pipeline.compressor,
+        )
     profile = get_domain_profile(config.domain)
     return AnchorPruneRuntime(
         pipeline.llm,

@@ -1,5 +1,61 @@
 # Release Notes
 
+## v0.7.0 — Domain Policy Packs
+
+Adds reusable, local, validated **domain policy packs** so a high-stakes
+workflow can be governed by name (`policy_pack="contract_review"`) instead of
+hand-wiring system anchors, weights, and conflict patterns per run. Closes the
+v0.6 gap where unknown domains (e.g. `contract_review`) silently fell back to the
+default profile.
+
+### Core principle
+
+> Policy packs configure governance. They do not perform governance.
+>
+> A pack configures the Anchor Governor, pruner, freshness scoring, and conflict
+> detection. It never approves an anchor or quarantines a payload directly — the
+> runtime's Anchor Governor still makes every decision.
+
+### What shipped
+
+- **Pack schema.** `anchorprune.policy_packs.DomainPolicyPack` — name/version,
+  domain profile (weights, token budget, preserve/compress/milestone/eviction
+  thresholds), system & domain anchors, freshness rules, conflict patterns,
+  expected milestone patterns, and decision-context rules.
+- **Loader + validator.** `load_policy_pack(path)` (YAML/JSON) and `validate_pack`
+  enforce snake_case names, semantic versions, unique anchor/pattern ids, valid
+  `conflicts_with` references, ordered thresholds, a critical system anchor,
+  compilable regexes, and non-empty decision-context rules. Every built-in is
+  validated on load.
+- **Registry + 5 built-ins.** `get_policy_pack` / `list_policy_packs` over
+  `procurement`, `coding_agent`, `contract_review`, `compliance`, and
+  `security_review` (shipped as `policy_packs/builtins/*.yaml`).
+- **Runtime application.** `AnchorPruneRuntime.from_policy_pack(...)` and
+  `register_domain_anchor(...)`. A pack sets the domain profile, seeds anchors,
+  and supplies conflict patterns both as extra extraction triggers and as the
+  runtime `contradiction_fn` — so a matching payload is surfaced to the governor,
+  which then decides.
+- **Everywhere a domain goes.** `AnchorPruneMiddleware(policy_pack=…)`, the config
+  `policy_pack:` field, scenario `"policy_pack"`, and `anchorprune run
+--policy-pack`.
+- **CLI.** `anchorprune packs list | show <name> | validate <name|path>`.
+- **Benchmark.** The `contract_review` scenario is now configured by its pack
+  (no more default-profile fallback); `results.json` and the report record which
+  pack governed each scenario. Behavioral claims are unchanged: lost-anchor 0%,
+  constraint adherence 100%, critical-conflict quarantine 100%, milestone
+  retention 100%, final decision context valid.
+- **Example + docs.** `examples/policy_packs/contract_review_pack_demo/`,
+  `docs/policy_packs.md`, and a README section.
+- **Packaging.** Built-in pack YAML files ship in the wheel via
+  `tool.setuptools.package-data`. Core install adds no new dependency
+  (`pyyaml` was already required); `policy_packs` imports without FastAPI.
+
+### Compatibility
+
+Fully backward compatible. Runs without a pack behave exactly as in v0.6.
+`results.json` gains an additive `policy_packs` map; the deterministic benchmark
+was regenerated and remains reproducible.
+
 ## v0.6.0 — Integration Layer for Governed Agent Workflows
 
 Makes AnchorPrune usable _inside_ existing agent workflows — LangGraph,

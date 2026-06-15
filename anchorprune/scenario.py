@@ -62,14 +62,27 @@ def build_runtime(
     anchor_extractor: Optional[AnchorExtractor] = None,
     compressor: Optional[Compressor] = None,
 ) -> AnchorPruneRuntime:
-    domain = scenario.get("domain", "default")
-    profile = get_domain_profile(domain)
-    runtime = AnchorPruneRuntime(
-        llm or MockLLM(),
-        domain_profile=profile,
-        anchor_extractor=anchor_extractor,
-        compressor=compressor,
-    )
+    pack_name = scenario.get("policy_pack")
+    if pack_name:
+        # A policy pack configures the domain profile, conflict patterns, and
+        # seed anchors. The pack's anchors are seeded at build time; scenario
+        # system anchors are added on top. Governance is unchanged.
+        from anchorprune.policy_packs.apply import build_runtime_from_pack
+
+        runtime = build_runtime_from_pack(
+            pack_name,
+            llm=llm,
+            anchor_extractor=anchor_extractor,
+            compressor=compressor,
+        )
+    else:
+        profile = get_domain_profile(scenario.get("domain", "default"))
+        runtime = AnchorPruneRuntime(
+            llm or MockLLM(),
+            domain_profile=profile,
+            anchor_extractor=anchor_extractor,
+            compressor=compressor,
+        )
     runtime.create_run(
         goal=scenario.get("goal", ""),
         system_anchors=scenario.get("system_anchors", []),

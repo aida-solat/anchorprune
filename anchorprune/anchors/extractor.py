@@ -88,14 +88,27 @@ def _infer_type(sentence: str) -> AnchorType:
     return AnchorType.CONSTRAINT
 
 
-def _is_directive(sentence: str) -> bool:
+def _is_directive(sentence: str, extra_patterns: Optional[List["re.Pattern"]] = None) -> bool:
     low = sentence.lower()
-    return any(cue in low for cue in _DIRECTIVE_CUES)
+    if any(cue in low for cue in _DIRECTIVE_CUES):
+        return True
+    if extra_patterns:
+        return any(p.search(sentence) for p in extra_patterns)
+    return False
 
 
 class AnchorCandidateExtractor:
-    def __init__(self, linker: Optional[EvidenceLinker] = None) -> None:
+    def __init__(
+        self,
+        linker: Optional[EvidenceLinker] = None,
+        *,
+        extra_directive_patterns: Optional[List["re.Pattern"]] = None,
+    ) -> None:
         self.linker = linker or EvidenceLinker()
+        # Optional extra triggers (e.g. policy-pack conflict patterns) that make
+        # a sentence eligible for extraction so the governor can evaluate it.
+        # Configuration only — extraction never decides; the governor does.
+        self.extra_directive_patterns = extra_directive_patterns or []
 
     def extract_from_block(
         self,
@@ -107,7 +120,7 @@ class AnchorCandidateExtractor:
         candidates: List[CandidateAnchor] = []
 
         for sentence in _split_sentences(block.content):
-            if not _is_directive(sentence):
+            if not _is_directive(sentence, self.extra_directive_patterns):
                 continue
             anchor_type = _infer_type(sentence)
             ev = block.evidence_refs or self.linker.link(sentence, evidence_index)

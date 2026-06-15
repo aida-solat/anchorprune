@@ -1,0 +1,99 @@
+name: procurement
+version: "0.1"
+description: >-
+  Governed memory policy pack for supplier and vendor procurement decisions.
+  Configures critical approval, compliance, and confidentiality anchors plus the
+  override patterns that must be quarantined.
+
+domain_profile:
+  token_budget: 32000
+  weights:
+    authority: 0.32
+    risk: 0.26
+    evidence: 0.22
+    relevance: 0.12
+    freshness: 0.08
+    conflict: 0.25
+    volatility: 0.12
+  preserve_threshold: 0.85
+  compress_threshold: 0.65
+  milestone_threshold: 0.45
+  eviction_threshold: 0.30
+
+system_anchors:
+  - id: human_approval_threshold
+    type: policy
+    priority: critical
+    content: "Purchases above the configured threshold require explicit human approval."
+    tags: ["approval", "spend"]
+  - id: verified_compliance_required
+    type: compliance_certificate
+    priority: critical
+    content: "A supplier cannot be recommended without verified compliance evidence."
+    tags: ["compliance", "evidence"]
+  - id: scoring_formula_confidential
+    type: security
+    priority: critical
+    content: "Internal supplier scoring formulas must not be exposed."
+    tags: ["confidential"]
+  - id: sanctions_screening_required
+    type: policy
+    priority: critical
+    content: "Sanctions screening is required for suppliers in high-risk regions."
+    tags: ["sanctions", "risk"]
+  - id: compliance_over_price
+    type: policy
+    priority: critical
+    content: "The cheapest option does not override compliance constraints."
+    tags: ["compliance", "price"]
+
+freshness_rules:
+  - anchor_type: supplier_stock_status
+    sensitivity: high
+  - anchor_type: price_quote
+    sensitivity: high
+  - anchor_type: compliance_certificate
+    sensitivity: medium
+  - anchor_type: procurement_policy
+    sensitivity: low
+
+conflict_patterns:
+  - id: ignore_compliance
+    severity: critical
+    pattern: "ignore compliance|skip compliance|compliance is optional"
+    conflicts_with: ["verified_compliance_required", "compliance_over_price"]
+  - id: approve_supplier_anyway
+    severity: critical
+    pattern: "approve (the )?supplier anyway|recommend anyway"
+    conflicts_with: ["verified_compliance_required"]
+  - id: skip_human_approval
+    severity: critical
+    pattern: "skip (the )?human approval|auto-?approve everything|no approval needed"
+    conflicts_with: ["human_approval_threshold"]
+  - id: reveal_scoring_formula
+    severity: critical
+    pattern: "reveal the scoring|expose the scoring|share the scoring formula"
+    conflicts_with: ["scoring_formula_confidential"]
+  - id: cheapest_regardless
+    severity: high
+    pattern: "choose the cheapest regardless|cheapest no matter what"
+    conflicts_with: ["compliance_over_price"]
+
+expected_milestone_patterns:
+  - "compliance evidence"
+  - "sanctions screening"
+  - "approval threshold"
+  - "supplier recommendation"
+
+decision_context_rules:
+  must_include:
+    - "compliance"
+    - "approval"
+  must_not_include:
+    - "ignore compliance"
+    - "skip human approval"
+    - "reveal the scoring formula"
+
+metadata:
+  domain: procurement
+  category: high_stakes

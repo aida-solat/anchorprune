@@ -8,6 +8,7 @@ unchanged.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, List, Optional
 
 from anchorprune.anchors.extractor import AnchorCandidateExtractor
@@ -22,8 +23,15 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 
 class HeuristicAnchorExtractor(AnchorExtractor):
-    def __init__(self, linker: Optional[EvidenceLinker] = None) -> None:
-        self._inner = AnchorCandidateExtractor(linker=linker)
+    def __init__(
+        self,
+        linker: Optional[EvidenceLinker] = None,
+        *,
+        extra_directive_patterns: Optional[List["re.Pattern"]] = None,
+    ) -> None:
+        self._inner = AnchorCandidateExtractor(
+            linker=linker, extra_directive_patterns=extra_directive_patterns
+        )
 
     def extract_candidates(
         self,

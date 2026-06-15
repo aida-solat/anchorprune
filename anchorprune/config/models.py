@@ -78,6 +78,9 @@ class RuntimeConfig(BaseModel):
 
 class AppConfig(BaseModel):
     domain: str = "default"
+    # Optional built-in policy pack name. When set, the pack configures the
+    # domain profile, conflict patterns, and seed anchors (v0.7).
+    policy_pack: Optional[str] = None
     llm: LLMConfig = Field(default_factory=LLMConfig)
     extractor: ExtractorConfig = Field(default_factory=ExtractorConfig)
     conflict_detector: ConflictDetectorConfig = Field(

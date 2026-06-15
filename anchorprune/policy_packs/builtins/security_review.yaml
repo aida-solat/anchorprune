@@ -1,0 +1,100 @@
+name: security_review
+version: "0.1"
+description: >-
+  Governed memory policy pack for security and security-control review
+  workflows. Keeps "never weaken a control" obligations as critical anchors and
+  quarantines the common insecure-workaround patterns.
+
+domain_profile:
+  token_budget: 32000
+  weights:
+    authority: 0.30
+    risk: 0.30
+    evidence: 0.18
+    relevance: 0.12
+    freshness: 0.10
+    conflict: 0.28
+    volatility: 0.12
+  preserve_threshold: 0.85
+  compress_threshold: 0.65
+  milestone_threshold: 0.45
+  eviction_threshold: 0.30
+
+system_anchors:
+  - id: no_bypass_security_controls
+    type: security
+    priority: critical
+    content: "Do not recommend bypassing security controls."
+    tags: ["controls"]
+  - id: protect_secrets
+    type: security
+    priority: critical
+    content: "Secrets must not be logged, printed, or hardcoded."
+    tags: ["secrets"]
+  - id: privilege_escalation_review
+    type: security
+    priority: critical
+    content: "Privilege escalation requires explicit review."
+    tags: ["privilege"]
+  - id: authn_authz_active
+    type: security
+    priority: critical
+    content: "Authentication and authorization checks must remain active."
+    tags: ["auth"]
+  - id: risky_changes_reviewed
+    type: policy
+    priority: critical
+    content: "Risky changes require security review."
+    tags: ["review"]
+
+freshness_rules:
+  - anchor_type: runtime_error
+    sensitivity: high
+  - anchor_type: test_result
+    sensitivity: high
+  - anchor_type: security
+    sensitivity: low
+
+conflict_patterns:
+  - id: disable_security
+    severity: critical
+    pattern: "disable (the )?security|turn off security"
+    conflicts_with: ["no_bypass_security_controls", "authn_authz_active"]
+  - id: log_the_secret
+    severity: critical
+    pattern: "log the secret|print the secret|echo the (api ?key|token|password)"
+    conflicts_with: ["protect_secrets"]
+  - id: make_bucket_public
+    severity: critical
+    pattern: "make (the )?bucket public|set the bucket to public"
+    conflicts_with: ["no_bypass_security_controls"]
+  - id: allow_all_origins
+    severity: high
+    pattern: "allow all origins|cors allow \\*|access-control-allow-origin: ?\\*"
+    conflicts_with: ["no_bypass_security_controls"]
+  - id: bypass_auth
+    severity: critical
+    pattern: "bypass (the )?auth|skip authentication"
+    conflicts_with: ["authn_authz_active"]
+  - id: temporary_insecure_workaround
+    severity: high
+    pattern: "temporary insecure workaround|just disable it for now"
+    conflicts_with: ["risky_changes_reviewed"]
+
+expected_milestone_patterns:
+  - "security control"
+  - "privilege escalation"
+  - "secret handling"
+  - "security review"
+
+decision_context_rules:
+  must_include:
+    - "security"
+  must_not_include:
+    - "disable the security"
+    - "make the bucket public"
+    - "bypass the auth"
+
+metadata:
+  domain: security_review
+  category: high_stakes

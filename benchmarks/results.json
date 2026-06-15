@@ -510,17 +510,17 @@
         "max_context_size": 100,
         "final_context_size_ratio_vs_full_history": 0.5077,
         "tokens_per_valid_context": null,
-        "bounded_context_score": 0.0666
+        "bounded_context_score": 0.0699
       },
       "anchorprune": {
         "method": "AnchorPrune",
         "steps": 2,
-        "total_input_tokens": 745,
+        "total_input_tokens": 954,
         "total_output_tokens": 240,
-        "final_context_tokens": 499,
+        "final_context_tokens": 619,
         "token_count_by_step": [
-          246,
-          499
+          335,
+          619
         ],
         "critical_anchors_total": 3,
         "critical_anchors_retained": 3,
@@ -531,8 +531,8 @@
         "milestone_retention_rate": 1.0,
         "final_decision_context_valid": 1.0,
         "context_tokens_by_step": [
-          246,
-          499
+          335,
+          619
         ],
         "anchor_retention_by_step": [
           1.0,
@@ -547,15 +547,15 @@
           0.0
         ],
         "state_size_by_step": [
-          10,
-          18
+          15,
+          25
         ],
         "adversarial_contamination_rate": 0.0,
         "obsolete_payload_retention_rate": 0.0,
-        "context_growth_slope": 253.0,
-        "max_context_size": 499,
-        "final_context_size_ratio_vs_full_history": 2.559,
-        "tokens_per_valid_context": 372.5,
+        "context_growth_slope": 284.0,
+        "max_context_size": 619,
+        "final_context_size_ratio_vs_full_history": 3.1744,
+        "tokens_per_valid_context": 477.0,
         "bounded_context_score": 0.0
       }
     }
@@ -2055,5 +2055,16 @@
         "bounded_context_score": 0.0936
       }
     }
+  },
+  "policy_packs": {
+    "supplier": null,
+    "coding_agent": null,
+    "contract_review": {
+      "name": "contract_review",
+      "version": "0.1"
+    },
+    "long_run_coding_20_steps": null,
+    "long_run_contract_15_steps": null,
+    "long_run_procurement_10_steps": null
   }
 }

@@ -35,8 +35,15 @@ for module in (
     "anchorprune.integrations",
     "anchorprune.integrations.langgraph",
     "anchorprune.integrations.llamaindex",
+    "anchorprune.policy_packs",
 ):
     importlib.import_module(module)
+
+# Policy packs (v0.7) must load and configure a runtime with FastAPI absent.
+from anchorprune.policy_packs import get_policy_pack, list_policy_packs
+
+assert "contract_review" in list_policy_packs()
+get_policy_pack("contract_review")
 
 # The integration layer must work end-to-end with FastAPI absent.
 from anchorprune import AnchorPruneMiddleware

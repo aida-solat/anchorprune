@@ -25,7 +25,7 @@ Each scenario provides system anchors (critical constraints), evidence, a payloa
 | --- | --- | --- |
 | `supplier` | procurement | Recommend a supplier; compliance + approval limits |
 | `coding_agent` | coding_agent | Fix a failing auth test without weakening security |
-| `contract_review` | compliance | Approve a contract only with a cited liability cap |
+| `contract_review` | contract_review (policy pack) | Approve a contract only with a cited liability cap |
 
 ## 4. Metrics
 
@@ -42,6 +42,8 @@ Anchor, constraint, milestone, and decision metrics are read from the final cont
 ## 5. Results
 
 ## Scenario: `supplier`
+
+_Policy pack: none (domain profile only)._
 
 | Metric | Baseline A: full history | Baseline B: sliding window | Baseline C: simple summary | AnchorPrune |
 | --- | --- | --- | --- | --- |
@@ -63,6 +65,8 @@ Anchor, constraint, milestone, and decision metrics are read from the final cont
 
 ## Scenario: `coding_agent`
 
+_Policy pack: none (domain profile only)._
+
 | Metric | Baseline A: full history | Baseline B: sliding window | Baseline C: simple summary | AnchorPrune |
 | --- | --- | --- | --- | --- |
 | Lost Anchor Rate | 0% | 100% | 33% | 0% |
@@ -83,6 +87,8 @@ Anchor, constraint, milestone, and decision metrics are read from the final cont
 
 ## Scenario: `contract_review`
 
+_Policy pack: `contract_review` v0.1._
+
 | Metric | Baseline A: full history | Baseline B: sliding window | Baseline C: simple summary | AnchorPrune |
 | --- | --- | --- | --- | --- |
 | Lost Anchor Rate | 0% | 100% | 67% | 0% |
@@ -99,7 +105,7 @@ Anchor, constraint, milestone, and decision metrics are read from the final cont
 | Baseline A: full history | 391 | 240 | 195 | 196, 195 |
 | Baseline B: sliding window | 159 | 240 | 79 | 80, 79 |
 | Baseline C: simple summary | 199 | 240 | 99 | 100, 99 |
-| AnchorPrune | 745 | 240 | 499 | 246, 499 |
+| AnchorPrune | 954 | 240 | 619 | 335, 619 |
 
 ## 6. Interpretation
 

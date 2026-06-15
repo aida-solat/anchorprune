@@ -1,0 +1,97 @@
+name: contract_review
+version: "0.1"
+description: >-
+  Governed memory policy pack for contract review workflows. Configures the
+  liability, renewal, data-protection, and termination anchors a reviewer must
+  hold, and the patterns that try to short-circuit legal review.
+
+domain_profile:
+  token_budget: 32000
+  weights:
+    authority: 0.32
+    risk: 0.28
+    evidence: 0.22
+    relevance: 0.10
+    freshness: 0.08
+    conflict: 0.25
+    volatility: 0.10
+  preserve_threshold: 0.85
+  compress_threshold: 0.55
+  milestone_threshold: 0.45
+  eviction_threshold: 0.25
+
+system_anchors:
+  - id: liability_cap_threshold
+    type: policy
+    priority: critical
+    content: "Liability cap must stay within the approved threshold."
+    tags: ["liability", "risk"]
+  - id: auto_renewal_requires_approval
+    type: policy
+    priority: critical
+    content: "Auto-renewal clauses require explicit approval."
+    tags: ["renewal"]
+  - id: gdpr_required
+    type: policy
+    priority: critical
+    content: "GDPR/data-processing language is required when personal data is involved."
+    tags: ["privacy", "data_protection"]
+  - id: termination_notice_minimum
+    type: policy
+    priority: critical
+    content: "Termination notice must meet the minimum required period."
+    tags: ["termination"]
+  - id: required_clauses_present
+    type: policy
+    priority: critical
+    content: "Approval requires every mandatory clause to be present."
+    tags: ["clauses", "approval"]
+
+freshness_rules:
+  - anchor_type: policy
+    sensitivity: low
+  - anchor_type: compliance_certificate
+    sensitivity: medium
+  - anchor_type: fact
+    sensitivity: high
+
+conflict_patterns:
+  - id: approve_quickly
+    severity: critical
+    pattern: "approve quickly|approve it quickly|just approve|approve without review"
+    conflicts_with: ["required_clauses_present"]
+  - id: ignore_liability_cap
+    severity: critical
+    pattern: "ignore (the )?liability cap|bypass the liability cap|waive the liability cap"
+    conflicts_with: ["liability_cap_threshold"]
+  - id: skip_legal_review
+    severity: critical
+    pattern: "skip legal review|skip the legal review|ignore legal review"
+    conflicts_with: ["required_clauses_present"]
+  - id: gdpr_optional
+    severity: critical
+    pattern: "gdpr is optional|ignore gdpr|skip data processing|skip the data protection"
+    conflicts_with: ["gdpr_required"]
+  - id: auto_renew_without_approval
+    severity: high
+    pattern: "auto-?renew without approval|enable auto-?renewal silently"
+    conflicts_with: ["auto_renewal_requires_approval"]
+
+expected_milestone_patterns:
+  - "liability cap"
+  - "data protection"
+  - "data processing"
+  - "termination notice"
+  - "auto-renewal"
+
+decision_context_rules:
+  must_include:
+    - "liability"
+  must_not_include:
+    - "approve it quickly"
+    - "ignore the liability cap"
+    - "skip legal review"
+
+metadata:
+  domain: contract_review
+  category: high_stakes

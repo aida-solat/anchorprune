@@ -1,0 +1,87 @@
+name: compliance
+version: "0.1"
+description: >-
+  Governed memory policy pack for internal compliance and policy QA workflows.
+  Requires cited policy sources, forbids treating unverified claims as policy,
+  and keeps escalation and evidence-surfacing obligations as critical anchors.
+
+domain_profile:
+  token_budget: 32000
+  weights:
+    authority: 0.34
+    risk: 0.24
+    evidence: 0.24
+    relevance: 0.10
+    freshness: 0.08
+    conflict: 0.22
+    volatility: 0.10
+  preserve_threshold: 0.85
+  compress_threshold: 0.65
+  milestone_threshold: 0.45
+  eviction_threshold: 0.30
+
+system_anchors:
+  - id: cite_approved_sources
+    type: policy
+    priority: critical
+    content: "Answers must cite approved policy sources."
+    tags: ["citation", "evidence"]
+  - id: no_unverified_as_policy
+    type: policy
+    priority: critical
+    content: "Do not treat unverified user claims as policy."
+    tags: ["verification"]
+  - id: escalate_on_conflict
+    type: policy
+    priority: critical
+    content: "Escalate if a policy conflict exists."
+    tags: ["escalation"]
+  - id: surface_missing_evidence
+    type: policy
+    priority: critical
+    content: "Missing evidence must be surfaced, not guessed."
+    tags: ["evidence"]
+
+freshness_rules:
+  - anchor_type: policy
+    sensitivity: low
+  - anchor_type: compliance_certificate
+    sensitivity: medium
+  - anchor_type: fact
+    sensitivity: high
+
+conflict_patterns:
+  - id: answer_without_citation
+    severity: critical
+    pattern: "answer without citation|no need to cite|skip the citation"
+    conflicts_with: ["cite_approved_sources"]
+  - id: ignore_policy
+    severity: critical
+    pattern: "ignore (the )?policy|disregard the policy"
+    conflicts_with: ["no_unverified_as_policy", "cite_approved_sources"]
+  - id: assume_allowed
+    severity: high
+    pattern: "assume it is allowed|assume it's allowed|just assume it's fine"
+    conflicts_with: ["surface_missing_evidence"]
+  - id: skip_escalation
+    severity: critical
+    pattern: "skip (the )?escalation|do not escalate|no need to escalate"
+    conflicts_with: ["escalate_on_conflict"]
+
+expected_milestone_patterns:
+  - "policy source"
+  - "citation"
+  - "escalation"
+  - "missing evidence"
+
+decision_context_rules:
+  must_include:
+    - "policy"
+  must_not_include:
+    - "ignore the policy"
+    - "answer without citation"
+    - "do not escalate"
+
+metadata:
+  domain: compliance
+  category: high_stakes

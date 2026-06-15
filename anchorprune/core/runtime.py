@@ -108,6 +108,10 @@ class AnchorPruneRuntime:
         self.registry = HybridAnchorRegistry()
         self.audit = AuditLog()
 
+        # Optional policy pack that configured this runtime (set by
+        # policy_packs.apply.build_runtime_from_pack). Configuration only.
+        self.policy_pack: Any = None
+
         # Cumulative benchmark metrics.
         self.metrics: Dict[str, Any] = {
             "steps": 0,
@@ -153,6 +157,47 @@ class AnchorPruneRuntime:
         self.graph.add_anchor(anchor)
         self.registry.add(anchor)
         return anchor
+
+    def register_domain_anchor(self, spec: Dict[str, Any]) -> Anchor:
+        """Seed a pre-approved domain anchor (e.g. from a policy pack)."""
+
+        anchor = Anchor(
+            content=spec["content"],
+            anchor_class=AnchorClass.DOMAIN,
+            anchor_type=AnchorType(spec.get("anchor_type", "policy")),
+            priority=AnchorPriority(spec.get("priority", "high")),
+            source=AnchorSource.POLICY_DOCUMENT,
+            weight=spec.get("weight", 0.9),
+            status=AnchorStatus.APPROVED,
+        )
+        self.graph.add_anchor(anchor)
+        self.registry.add(anchor)
+        return anchor
+
+    @classmethod
+    def from_policy_pack(
+        cls,
+        *,
+        llm: LLMClient,
+        policy_pack: Any,
+        anchor_extractor: Optional[AnchorExtractor] = None,
+        compressor: Optional[Compressor] = None,
+    ) -> "AnchorPruneRuntime":
+        """Build a runtime configured by a policy pack (name or pack object).
+
+        The pack supplies the domain profile and conflict patterns and seeds its
+        pre-approved anchors. Governance is still performed by the Anchor
+        Governor; the pack only configures it.
+        """
+
+        from anchorprune.policy_packs.apply import build_runtime_from_pack
+
+        return build_runtime_from_pack(
+            policy_pack,
+            llm=llm,
+            anchor_extractor=anchor_extractor,
+            compressor=compressor,
+        )
 
     # ---- evidence & payload ----------------------------------------------
 

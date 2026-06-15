@@ -23,6 +23,8 @@ from anchorprune.domains.profiles import BUILTIN_PROFILES, get_domain_profile
 from anchorprune.scenario import load_scenario, run_scenario
 
 app = typer.Typer(help="Governed Anchored State Pruning for Long-Running AI Agents.")
+packs_app = typer.Typer(help="Inspect and validate domain policy packs (v0.7).")
+app.add_typer(packs_app, name="packs")
 console = Console()
 
 RUNS_DIR = Path(".anchorprune/runs")
@@ -85,12 +87,20 @@ def run(
         help="Pipeline config (YAML/JSON) selecting heuristic vs model-based "
         "adapters. Omit for the deterministic mock pipeline.",
     ),
+    policy_pack: Optional[str] = typer.Option(
+        None,
+        "--policy-pack",
+        help="Built-in policy pack name to configure governance (e.g. "
+        "'contract_review'). Overrides the scenario's domain profile.",
+    ),
 ) -> None:
     """Run a scenario through the AnchorPrune governed runtime."""
 
     scenario = load_scenario(input)
     if goal:
         scenario["goal"] = goal
+    if policy_pack:
+        scenario["policy_pack"] = policy_pack
 
     llm = None
     extractor = None
@@ -243,6 +253,68 @@ def serve(
         f"[dim](docs at /docs, db={db})[/dim]"
     )
     uvicorn.run(application, host=host, port=port)
+
+
+@packs_app.command("list")
+def packs_list() -> None:
+    """List the available built-in domain policy packs."""
+
+    from anchorprune.policy_packs import get_policy_pack, list_policy_packs
+
+    names = list_policy_packs()
+    table = Table(title="Available policy packs")
+    table.add_column("name")
+    table.add_column("version", justify="right")
+    table.add_column("description")
+    for name in names:
+        pack = get_policy_pack(name)
+        table.add_row(name, pack.version, (pack.description or "").strip()[:70])
+    console.print(table)
+
+
+@packs_app.command("show")
+def packs_show(name: str = typer.Argument(..., help="Policy pack name.")) -> None:
+    """Show a built-in policy pack's anchors, patterns, and configuration."""
+
+    from anchorprune.policy_packs import get_policy_pack
+    from anchorprune.policy_packs.registry import PolicyPackNotFound
+
+    try:
+        pack = get_policy_pack(name)
+    except PolicyPackNotFound as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    console.print_json(pack.model_dump_json(indent=2))
+
+
+@packs_app.command("validate")
+def packs_validate(
+    target: str = typer.Argument(
+        ..., help="Policy pack name (built-in) or path to a YAML/JSON pack file."
+    ),
+) -> None:
+    """Validate a built-in pack (by name) or a pack file (by path)."""
+
+    from anchorprune.policy_packs import has_policy_pack, validate_pack
+    from anchorprune.policy_packs.loader import PackLoadError, load_pack
+    from anchorprune.policy_packs.registry import get_policy_pack
+
+    try:
+        if has_policy_pack(target) and not Path(target).exists():
+            pack = get_policy_pack(target)
+        else:
+            pack = load_pack(target)
+    except PackLoadError as exc:
+        console.print(f"[red]Could not load pack:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    errors = validate_pack(pack)
+    if errors:
+        console.print(f"[red]Policy pack '{pack.name}' is invalid:[/red]")
+        for err in errors:
+            console.print(f"  [red]-[/red] {err}")
+        raise typer.Exit(code=1)
+    console.print(f"[green]Policy pack '{pack.name}' v{pack.version} is valid.[/green]")
 
 
 if __name__ == "__main__":

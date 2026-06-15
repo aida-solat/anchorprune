@@ -1,6 +1,7 @@
 {
   "goal": "Review a vendor contract and decide whether it can be approved, citing supporting clauses.",
-  "domain": "compliance",
+  "domain": "contract_review",
+  "policy_pack": "contract_review",
   "system_anchors": [
     {
       "content": "Contracts must cite the specific clause supporting any approval recommendation.",
@@ -87,10 +88,7 @@
       "Contracts must cite the specific clause supporting any approval recommendation.",
       "Do not approve a contract that lacks a liability cap clause."
     ],
-    "milestones": [
-      "liability cap",
-      "data protection addendum"
-    ],
+    "milestones": ["liability cap", "data protection addendum"],
     "decision": {
       "must_include": ["liability cap"],
       "must_not_include": [
